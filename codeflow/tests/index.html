@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeFlow — Testler</title>
+  <style>
+    :root { --pass: #1f9d55; --fail: #d64545; --ink: #1d2b3a; --muted: #5d6b7a; --line: #e3e8ef; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 32px 16px; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: #f5f8fc; }
+    main, header { max-width: 960px; margin: 0 auto; }
+    h1 { margin: 0 0 4px; font-size: 26px; }
+    header p { margin: 0 0 24px; color: var(--muted); }
+    .summary { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-radius: 12px; color: #fff; font-size: 18px; margin-bottom: 24px; }
+    .summary.pass { background: var(--pass); }
+    .summary.fail { background: var(--fail); }
+    .suite { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
+    .suite h2 { margin: 0 0 8px; font-size: 17px; }
+    .suite.fail h2 { color: var(--fail); }
+    .suite ul { list-style: none; margin: 0; padding: 0; }
+    .suite li { padding: 4px 0; border-top: 1px solid var(--line); }
+    .suite li:first-child { border-top: 0; }
+    li.pass { color: var(--pass); }
+    li.fail { color: var(--fail); font-weight: 600; }
+    pre { white-space: pre-wrap; background: #fff4f4; color: #7a1f1f; padding: 10px 12px; border-radius: 8px; font-size: 13px; font-weight: 400; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CodeFlow — Testler</h1>
+    <p>Bu sayfa açıldığında tüm testler otomatik çalışır. Kurulum gerekmez.</p>
+  </header>
+  <main id="test-results">Testler çalışıyor…</main>
+  <pre id="test-report" hidden></pre>
+
+  <!-- Uygulama modülleri (index.html ile aynı sıra) -->
+  <script src="../js/codeflow.js"></script>
+  <script src="../js/models/process.js"></script>
+  <script src="../js/models/simulation-result.js"></script>
+  <script src="../js/engine/process-manager.js"></script>
+  <script src="../js/algorithms/scheduling-algorithm.js"></script>
+  <script src="../js/algorithms/fcfs.js"></script>
+  <script src="../js/algorithms/sjf.js"></script>
+  <script src="../js/algorithms/priority.js"></script>
+  <script src="../js/algorithms/round-robin.js"></script>
+  <script src="../js/engine/metrics-calculator.js"></script>
+  <script src="../js/engine/simulation-engine.js"></script>
+  <script src="../js/comparison/algorithm-comparator.js"></script>
+  <script src="../js/scenarios/datasets.js"></script>
+  <script src="../js/scenarios/scenario-generator.js"></script>
+
+  <!-- Test çatısı ve testler -->
+  <script src="lib/mini-test.js"></script>
+  <script src="helpers.js"></script>
+  <script src="process-manager.test.js"></script>
+  <script src="fcfs.test.js"></script>
+  <script src="sjf.test.js"></script>
+  <script src="priority.test.js"></script>
+  <script src="round-robin.test.js"></script>
+  <script src="metrics.test.js"></script>
+  <script src="engine.test.js"></script>
+  <script src="scenarios.test.js"></script>
+  <script src="properties.test.js"></script>
+  <script>runTests();</script>
+</body>
+</html>

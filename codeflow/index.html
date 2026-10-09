@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CodeFlow — CPU Zamanlama Simülatörü</title>
+  <meta name="description" content="CodeFlow; FCFS, SJF, Priority ve Round Robin algoritmalarını simüle eden, Gantt şemasıyla adım adım gösteren ve performanslarını karşılaştıran bir İşletim Sistemleri ders projesidir.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232b6db3'/%3E%3Cstop offset='1' stop-color='%236bb3ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='40' height='40' rx='10' fill='url(%23g)'/%3E%3Crect x='8' y='10' width='14' height='5' rx='2.5' fill='%23fff'/%3E%3Crect x='16' y='17.5' width='16' height='5' rx='2.5' fill='%23fff' opacity='.85'/%3E%3Crect x='11' y='25' width='10' height='5' rx='2.5' fill='%23fff' opacity='.7'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/landing.css">
+  <link rel="stylesheet" href="css/simulator.css">
+  <link rel="stylesheet" href="css/gantt.css">
+  <link rel="stylesheet" href="css/comparison.css">
+</head>
+<body>
+
+<!-- İkon seti (Lucide tarzı çizgi ikonlar). Kullanım: <svg class="icon"><use href="#i-cpu"/></svg> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></symbol>
+  <symbol id="i-gantt" viewBox="0 0 24 24"><path d="M10 6h8"/><path d="M12 16h6"/><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M8 11h7"/></symbol>
+  <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+  <symbol id="i-compare" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-arrow-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="m12 8 4 4-4 4"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 3 20 12 6 21 6 3"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/></symbol>
+  <symbol id="i-skip-back" viewBox="0 0 24 24"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" x2="5" y1="19" y2="5"/></symbol>
+  <symbol id="i-skip-forward" viewBox="0 0 24 24"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" x2="19" y1="5" y2="19"/></symbol>
+  <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-dice" viewBox="0 0 24 24"><rect width="12" height="12" x="2" y="10" rx="2" ry="2"/><path d="m17.92 14 3.5-3.5a2.24 2.24 0 0 0 0-3l-5-4.92a2.24 2.24 0 0 0-3 0L10 6"/><path d="M6 18h.01"/><path d="M10 14h.01"/><path d="M15 6h.01"/><path d="M18 9h.01"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+  <symbol id="i-printer" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></symbol>
+  <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+  <symbol id="i-flask" viewBox="0 0 24 24"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><path d="M8.5 2h7"/><path d="M7 16h10"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-queue" viewBox="0 0 24 24"><path d="M10 6h11"/><path d="M10 12h11"/><path d="M10 18h11"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></symbol>
+  <symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22"/><path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2"/></symbol>
+  <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></symbol>
+  <symbol id="i-login" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-puzzle" viewBox="0 0 24 24"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></symbol>
+  <symbol id="i-table" viewBox="0 0 24 24"><path d="M12 3v18"/><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></symbol>
+  <symbol id="i-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></symbol>
+  <symbol id="i-fit" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-cap" viewBox="0 0 24 24"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
+</svg>
+
+<a class="skip-link" href="#simulator">Simülatöre atla</a>
+
+<!-- =====================================================================
+     HEADER
+     ===================================================================== -->
+<header class="header" id="top">
+  <div class="container header-inner">
+    <a class="logo" href="#top" aria-label="CodeFlow ana sayfa">
+      <svg class="logo-mark" viewBox="0 0 40 40" aria-hidden="true">
+        <defs>
+          <linearGradient id="logo-gradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#2b6db3"/>
+            <stop offset="1" stop-color="#6bb3ff"/>
+          </linearGradient>
+        </defs>
+        <rect width="40" height="40" rx="10" fill="url(#logo-gradient)"/>
+        <rect x="8" y="10" width="14" height="5" rx="2.5" fill="#fff"/>
+        <rect x="16" y="17.5" width="16" height="5" rx="2.5" fill="#fff" opacity=".85"/>
+        <rect x="11" y="25" width="10" height="5" rx="2.5" fill="#fff" opacity=".7"/>
+      </svg>
+      <span class="logo-text">
+        <span class="logo-name"><b>Code</b>Flow</span>
+        <span class="logo-sub">CPU Scheduler</span>
+      </span>
+    </a>
+
+    <nav class="nav" id="site-nav" aria-label="Ana menü">
+      <a href="#nedir">CPU Zamanlama</a>
+      <a href="#simulator">Simülatör</a>
+      <a href="#karsilastirma">Karşılaştırma</a>
+      <a href="#algoritmalar">Algoritmalar</a>
+      <a href="#mimari">Mimari</a>
+      <a href="#ekip">Ekip</a>
+      <a href="#sss">SSS</a>
+    </nav>
+
+    <a class="btn btn-primary header-cta" href="#simulator">
+      <svg class="icon icon--sm icon--fill"><use href="#i-play"/></svg>
+      Simülasyonu Başlat
+    </a>
+
+    <button class="nav-toggle" type="button" aria-controls="site-nav" aria-expanded="false" aria-label="Menüyü aç">
+      <svg class="icon icon--lg"><use href="#i-menu"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+
+<!-- =====================================================================
+     HERO
+     ===================================================================== -->
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero-badge">
+    <svg class="icon icon--sm"><use href="#i-cap"/></svg>
+    İşletim Sistemleri Dersi Projesi · 2026–2027 Güz
+  </div>
+
+  <div class="container hero-inner">
+    <div class="hero-visual" aria-hidden="true">
+      <p class="hero-brand">CodeFlow</p>
+
+      <div class="hero-cards">
+        <!-- Arka kart: t = 2 anında CPU ve hazır kuyruk (Dataset A, Round Robin, q = 2) -->
+        <div class="hero-card hero-card--queue">
+          <div class="hc-row">
+            <span class="hc-cpu"><svg class="icon"><use href="#i-cpu"/></svg> CPU</span>
+            <span class="hc-chip" style="--c:#c2410c">P2</span>
+          </div>
+          <p class="hc-label">Hazır Kuyruk</p>
+          <div class="hc-queue">
+            <span class="hc-chip" style="--c:#15803d">P3</span>
+            <span class="hc-chip" style="--c:#1c6dd0">P1</span>
+            <span class="hc-chip hc-chip--ghost">P4 · t=3</span>
+          </div>
+          <p class="hc-time">t = 2 · P1'in quantum'u doldu</p>
+        </div>
+
+        <!-- Ön kart: Gantt şeması (Dataset A, Round Robin, q = 2) -->
+        <div class="hero-card hero-card--gantt">
+          <div class="hc-head">
+            <span class="hc-title"><svg class="icon"><use href="#i-gantt"/></svg> Gantt Şeması</span>
+            <span class="hc-tag">Round Robin · q = 2</span>
+          </div>
+          <div class="hc-gantt">
+            <span style="--s:0;--w:2;--c:#1c6dd0;--i:0">P1</span>
+            <span style="--s:2;--w:2;--c:#c2410c;--i:1">P2</span>
+            <span style="--s:4;--w:2;--c:#15803d;--i:2">P3</span>
+            <span style="--s:6;--w:2;--c:#1c6dd0;--i:3">P1</span>
+            <span style="--s:8;--w:2;--c:#7e22ce;--i:4">P4</span>
+            <span style="--s:10;--w:1;--c:#c2410c;--i:5"></span>
+            <span style="--s:11;--w:2;--c:#15803d;--i:6">P3</span>
+            <span style="--s:13;--w:1;--c:#1c6dd0;--i:7"></span>
+            <span style="--s:14;--w:2;--c:#7e22ce;--i:8">P4</span>
+            <span style="--s:16;--w:4;--c:#15803d;--i:9">P3</span>
+          </div>
+          <div class="hc-axis"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+          <div class="hc-metrics">
+            <div><b>8,75</b><span>Ort. Bekleme</span></div>
+            <div><b>2,00</b><span>Ort. Yanıt</span></div>
+            <div><b>%100</b><span>CPU Kullanımı</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-content">
+      <h1 id="hero-title"><strong>CPU Zamanlama</strong> Simülatörü</h1>
+      <p class="hero-lead">
+        CodeFlow; girdiğiniz process'leri FCFS, SJF, Priority ve Round Robin algoritmalarıyla simüle eder,
+        CPU'nun hangi anda hangi işi çalıştırdığını Gantt şeması üzerinde adım adım gösterir ve
+        algoritmaların performansını aynı veri üzerinde yan yana karşılaştırır.
+      </p>
+      <ul class="hero-list">
+        <li><svg class="icon"><use href="#i-arrow-circle"/></svg> Dört algoritma: FCFS, SJF, Priority ve Round Robin</li>
+        <li><svg class="icon"><use href="#i-arrow-circle"/></svg> Adım adım oynatılan Gantt şeması ve hazır kuyruk görünümü</li>
+        <li><svg class="icon"><use href="#i-arrow-circle"/></svg> Waiting, Turnaround ve Response sürelerinin otomatik hesabı</li>
+        <li><svg class="icon"><use href="#i-arrow-circle"/></svg> Aynı veriyle karşılaştırmalı analiz ve indirilebilir rapor</li>
+        <li><svg class="icon"><use href="#i-arrow-circle"/></svg> Quantum ve senaryo denemeleri için parametrik laboratuvar</li>
+      </ul>
+      <div class="hero-actions">
+        <a class="btn btn-glow" href="#simulator">
+          <svg class="icon icon--sm icon--fill"><use href="#i-play"/></svg>
+          Simülasyonu Başlat
+        </a>
+        <button class="btn btn-green" type="button" data-try-dataset="A" data-try-algorithm="rr">
+          <svg class="icon icon--sm"><use href="#i-zap"/></svg>
+          Hazır Örnekle Dene
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <ul class="feature-bar">
+      <li>
+        <svg class="icon icon--xl"><use href="#i-cpu"/></svg>
+        <span>Dört zamanlama algoritması, tek ortak motor</span>
+      </li>
+      <li>
+        <svg class="icon icon--xl"><use href="#i-gantt"/></svg>
+        <span>Adım adım işlenen Gantt şeması</span>
+      </li>
+      <li>
+        <svg class="icon icon--xl"><use href="#i-gauge"/></svg>
+        <span>Otomatik hesaplanan performans metrikleri</span>
+      </li>
+      <li>
+        <svg class="icon icon--xl"><use href="#i-compare"/></svg>
+        <span>Karşılaştırmalı analiz ve raporlama</span>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<!-- =====================================================================
+     CPU ZAMANLAMA NEDİR?
+     ===================================================================== -->
+<section class="section about" id="nedir">
+  <div class="container about-inner">
+    <div class="about-visual" aria-hidden="true">
+      <div class="market">
+        <p class="market-title"><svg class="icon"><use href="#i-cart"/></svg> Tek kasalı market benzetmesi</p>
+        <div class="market-scene">
+          <div class="market-cpu">
+            <svg class="icon icon--xl"><use href="#i-cpu"/></svg>
+            <b>Kasa</b>
+            <span>= CPU</span>
+          </div>
+          <div class="market-arrow"><svg class="icon icon--lg"><use href="#i-chevron-left"/></svg></div>
+          <ol class="market-queue">
+            <li style="--c:#1c6dd0;--w:5">P1 <small>5 ürün</small></li>
+            <li style="--c:#c2410c;--w:3">P2 <small>3 ürün</small></li>
+            <li style="--c:#15803d;--w:8">P3 <small>8 ürün</small></li>
+            <li style="--c:#7e22ce;--w:4">P4 <small>4 ürün</small></li>
+          </ol>
+        </div>
+        <dl class="market-legend">
+          <div><dt>Kasiyer</dt><dd>CPU</dd></div>
+          <div><dt>Müşteri</dt><dd>Process</dd></div>
+          <div><dt>Ürün sayısı</dt><dd>Burst Time</dd></div>
+          <div><dt>"Sıradaki kim?" kuralı</dt><dd>Zamanlama algoritması</dd></div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="about-content">
+      <span class="eyebrow">Temel Fikir</span>
+      <h2 class="section-title">CPU Zamanlama Nedir, <span>Neden Önemlidir?</span></h2>
+      <p>
+        Bilgisayarınızda tarayıcı, müzik ve kod editörü aynı anda açık olsa da işlemcinin bir çekirdeği
+        aynı anda yalnızca tek bir işi yürütebilir. Hepsinin birlikte çalışıyormuş gibi görünmesinin sebebi,
+        işletim sisteminin CPU'yu bu programlar arasında çok hızlı paylaştırmasıdır.
+      </p>
+      <p>
+        Bu paylaşımda <strong>"CPU'yu şimdi kim kullanacak, ne kadar süre kullanacak?"</strong> kararını veren
+        bileşene <strong>CPU zamanlayıcı (scheduler)</strong>, bu kararı verirken izlediği kurala da
+        <strong>zamanlama algoritması</strong> denir.
+      </p>
+      <p>
+        Tek kasalı bir market düşünün: kasiyer CPU, kuyruktaki müşteriler process'ler, kasiyerin
+        "sıradaki kim?" kuralı ise algoritmadır. Kural değiştiğinde aynı kuyruk için bekleme süreleri de değişir.
+        CodeFlow bu farkı ölçer ve görünür hâle getirir.
+      </p>
+      <div class="about-flow">
+        <span>Process'leri al</span>
+        <svg class="icon icon--sm"><use href="#i-arrow-right"/></svg>
+        <span>Simüle et</span>
+        <svg class="icon icon--sm"><use href="#i-arrow-right"/></svg>
+        <span>Görselleştir</span>
+        <svg class="icon icon--sm"><use href="#i-arrow-right"/></svg>
+        <span>Ölç</span>
+        <svg class="icon icon--sm"><use href="#i-arrow-right"/></svg>
+        <span>Karşılaştır</span>
+      </div>
+      <ul class="concept-chips" aria-label="Öne çıkan kavramlar">
+        <li>Process</li>
+        <li>Ready Queue</li>
+        <li>Context Switch</li>
+        <li>Preemptive</li>
+        <li>Non-preemptive</li>
+        <li>Time Quantum</li>
+        <li>Starvation</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     TEMEL KAVRAMLAR
+     ===================================================================== -->
+<section class="section section--warm concepts" id="kavramlar">
+  <div class="container">
+    <header class="section-head">
+      <span class="eyebrow">Temel Kavramlar</span>
+      <h2 class="section-title">Simülatörün Dili: <span>Girdiler ve Metrikler</span></h2>
+      <p class="section-lead">Her process için dört bilgi girersiniz; simülatör de her çalıştırmada aşağıdaki metrikleri otomatik hesaplar.</p>
+    </header>
+
+    <div class="concepts-inner">
+      <div class="concept-cards">
+        <article class="concept-card card-blue">
+          <svg class="icon icon--xl"><use href="#i-login"/></svg>
+          <h3>Arrival Time</h3>
+          <p class="concept-tr">Geliş Zamanı</p>
+          <p>Process'in sisteme gelip hazır kuyruğa girdiği an.</p>
+        </article>
+        <article class="concept-card card-blue">
+          <svg class="icon icon--xl"><use href="#i-hourglass"/></svg>
+          <h3>Burst Time</h3>
+          <p class="concept-tr">Çalışma Süresi</p>
+          <p>Process'in CPU'da harcaması gereken toplam süre.</p>
+        </article>
+        <article class="concept-card card-blue">
+          <svg class="icon icon--xl"><use href="#i-flag"/></svg>
+          <h3>Priority</h3>
+          <p class="concept-tr">Öncelik</p>
+          <p>Küçük sayı = yüksek öncelik. Önceliği 1 olan, 3 olandan önce çalışır.</p>
+        </article>
+        <article class="concept-card card-blue">
+          <svg class="icon icon--xl"><use href="#i-rotate"/></svg>
+          <h3>Time Quantum</h3>
+          <p class="concept-tr">Zaman Dilimi</p>
+          <p>Round Robin'de bir process'e tek seferde verilen en uzun süre.</p>
+        </article>
+      </div>
+
+      <div class="metric-defs">
+        <div class="metric-def">
+          <h3>Waiting Time <small>Bekleme Süresi</small></h3>
+          <code>WT = TAT − Burst</code>
+          <p>Process'in hazır kuyrukta, CPU'yu beklerken geçirdiği toplam süre.</p>
+        </div>
+        <div class="metric-def">
+          <h3>Turnaround Time <small>Tamamlanma Süresi</small></h3>
+          <code>TAT = Completion − Arrival</code>
+          <p>Sisteme girişten işin tamamen bitişine kadar geçen süre.</p>
+        </div>
+        <div class="metric-def">
+          <h3>Response Time <small>Yanıt Süresi</small></h3>
+          <code>RT = İlk çalışma − Arrival</code>
+          <p>CPU'ya ilk kez dokunana kadar geçen süre. Etkileşimli sistemlerde en kritik metriktir.</p>
+        </div>
+        <div class="metric-def">
+          <h3>CPU Utilization <small>CPU Kullanımı</small></h3>
+          <code>Dolu süre ÷ Toplam süre</code>
+          <p>CPU'nun zamanın ne kadarında gerçekten iş yaptığı. Boşta (IDLE) geçen süre bu oranı düşürür.</p>
+        </div>
+        <div class="metric-def">
+          <h3>Throughput <small>İş Çıkarma Hızı</small></h3>
+          <code>Process sayısı ÷ Toplam süre</code>
+          <p>Birim zamanda tamamlanan process sayısı.</p>
+        </div>
+        <div class="metric-def">
+          <h3>Context Switch <small>Bağlam Değiştirme</small></h3>
+          <code>Farklı process'e geçiş sayısı</code>
+          <p>CPU'nun bir process'ten başka bir process'e geçme sayısı. Gerçek sistemde her geçişin bir maliyeti vardır.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     NASIL ÇALIŞIR?
+     ===================================================================== -->
+<section class="section steps" id="nasil">
+  <div class="container">
+    <header class="section-head">
+      <span class="eyebrow">Nasıl Çalışır?</span>
+      <h2 class="section-title">Beş Adımda <span>Simülasyon</span></h2>
+    </header>
+    <ol class="step-list">
+      <li class="step">
+        <span class="step-num">1</span>
+        <svg class="icon icon--lg"><use href="#i-table"/></svg>
+        <h3>Process'leri girin</h3>
+        <p>Tabloya elle yazın, hazır veri setlerinden birini yükleyin ya da rastgele bir senaryo üretin.</p>
+      </li>
+      <li class="step">
+        <span class="step-num">2</span>
+        <svg class="icon icon--lg"><use href="#i-sliders"/></svg>
+        <h3>Algoritmayı seçin</h3>
+        <p>FCFS, SJF, Priority veya Round Robin. Round Robin için quantum değerini belirleyin.</p>
+      </li>
+      <li class="step">
+        <span class="step-num">3</span>
+        <svg class="icon icon--lg"><use href="#i-cpu"/></svg>
+        <h3>Simüle edin</h3>
+        <p>Motor CPU'nun her anını hesaplar ve üretilen planın kurallara uyduğunu doğrular.</p>
+      </li>
+      <li class="step">
+        <span class="step-num">4</span>
+        <svg class="icon icon--lg"><use href="#i-gantt"/></svg>
+        <h3>Gantt'ı inceleyin</h3>
+        <p>Zaman çizelgesini adım adım oynatın, hazır kuyruğun nasıl değiştiğini izleyin.</p>
+      </li>
+      <li class="step">
+        <span class="step-num">5</span>
+        <svg class="icon icon--lg"><use href="#i-compare"/></svg>
+        <h3>Karşılaştırın</h3>
+        <p>Aynı veriyi dört algoritmayla çalıştırın, metrikleri yan yana görün, raporu indirin.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- =====================================================================
+     SİMÜLATÖR
+     Bileşenler JS ile bu bağlantı noktalarına (mount point) çizilir:
+       #sim-settings        → ui/settings-panel.js
+       #sim-process-table   → ui/process-table.js
+       #sim-errors          → ui/process-table.js / app.js
+       #sim-metrics, #sim-process-results, #sim-export → ui/results-view.js, ui/exporter.js
+       #sim-gantt           → visualization/gantt-chart.js
+       #sim-player          → ui/step-player.js
+     ===================================================================== -->
+<section class="section section--soft sim" id="simulator">
+  <div class="container">
+    <header class="section-head">
+      <span class="eyebrow">Simülatör</span>
+      <h2 class="section-title">Kendi Senaryonu Kur, <span>CPU'yu Adım Adım İzle</span></h2>
+      <p class="section-lead">Process'leri girin, bir algoritma seçin ve çalıştırın. Sonuçlar, Gantt şeması ve karşılaştırma birlikte güncellenir.</p>
+    </header>
+
+    <noscript>
+      <div class="alert alert--warn">Simülatörün çalışması için tarayıcınızda JavaScript açık olmalı.</div>
+    </noscript>
+
+    <div class="sim-layout">
+      <aside class="sim-settings" id="sim-settings" aria-label="Simülasyon ayarları">
+        <p class="sim-loading">Simülatör yükleniyor…</p>
+      </aside>
+
+      <div class="sim-input">
+        <div class="sim-input-head">
+          <h3><svg class="icon"><use href="#i-table"/></svg> Process Tablosu</h3>
+          <p>Priority boş bırakılırsa 1 kabul edilir. Küçük sayı daha önceliklidir.</p>
+        </div>
+        <div id="sim-process-table"></div>
+        <div id="sim-errors" class="sim-errors" role="alert" hidden></div>
+      </div>
+    </div>
+
+    <div class="sim-output" id="sim-output" aria-live="polite">
+      <div class="sim-output-head">
+        <div>
+          <h3 id="sim-result-title">Sonuçlar</h3>
+          <p id="sim-result-subtitle" class="muted"></p>
+        </div>
+        <div id="sim-export" class="sim-export"></div>
+      </div>
+
+      <div id="sim-metrics" class="sim-metrics"></div>
+
+      <div class="card sim-gantt-card">
+        <div class="card-head">
+          <h4><svg class="icon"><use href="#i-gantt"/></svg> Gantt Şeması</h4>
+          <span class="muted">Bir dilimin üzerine gelin: başlangıç, bitiş ve süre görünür.</span>
+        </div>
+        <div id="sim-gantt"></div>
+        <div id="sim-player"></div>
+      </div>
+
+      <div class="card sim-table-card">
+        <div class="card-head">
+          <h4><svg class="icon"><use href="#i-table"/></svg> Process Sonuçları</h4>
+          <span class="muted">TAT = CT − AT · WT = TAT − BT · RT = İlk çalışma − AT</span>
+        </div>
+        <div id="sim-process-results"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     KARŞILAŞTIRMA  (ui/comparison-view.js)
+     ===================================================================== -->
+<section class="section section--blue compare" id="karsilastirma">
+  <div class="compare-dots" aria-hidden="true"></div>
+  <div class="container">
+    <div class="compare-layout">
+      <div class="compare-text">
+        <span class="eyebrow eyebrow--light">Karşılaştırmalı Analiz</span>
+        <h2>Aynı Veri, Dört Farklı Algoritma</h2>
+        <p>
+          Simülatördeki process seti dört algoritmayla da çalıştırılır. Her metrikte en iyi değeri veren algoritma
+          ayrı ayrı işaretlenir; çünkü "en iyi" algoritma, neyi önemsediğinize göre değişir: toplam bekleme mi,
+          ilk yanıtın hızı mı, yoksa daha az context switch mi?
+        </p>
+        <div id="compare-insights" class="compare-insights"></div>
+        <a class="btn btn-light" href="#simulator">
+          <svg class="icon icon--sm"><use href="#i-sliders"/></svg>
+          Senaryoyu Değiştir
+        </a>
+      </div>
+      <div class="compare-chart-card glass">
+        <h3>Ortalama Süreler <small>(zaman birimi)</small></h3>
+        <div id="compare-chart"></div>
+      </div>
+    </div>
+
+    <div class="card compare-table-card">
+      <div class="card-head">
+        <h3><svg class="icon"><use href="#i-trophy"/></svg> Metrik Karşılaştırması</h3>
+        <span class="muted">Yeşil: o metrikte en iyi değer</span>
+      </div>
+      <div id="compare-table"></div>
+    </div>
+
+    <div class="card compare-gantts-card">
+      <div class="card-head">
+        <h3><svg class="icon"><use href="#i-gantt"/></svg> Gantt Karşılaştırması</h3>
+        <span class="muted">Tüm şemalar aynı zaman ölçeğinde</span>
+      </div>
+      <div id="compare-gantts"></div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     PARAMETRİK SENARYO LABORATUVARI  (ui/scenario-lab.js)
+     ===================================================================== -->
+<section class="section lab" id="laboratuvar">
+  <div class="container">
+    <header class="section-head">
+      <span class="eyebrow">Parametrik Senaryo Laboratuvarı</span>
+      <h2 class="section-title">Parametreyi Değiştir, <span>Etkisini Ölç</span></h2>
+      <p class="section-lead">Quantum değerinin Round Robin'i nasıl etkilediğini görün, farklı senaryoları kaydedip yan yana karşılaştırın.</p>
+    </header>
+    <div class="lab-grid">
+      <div class="card lab-card" id="lab-quantum"></div>
+      <div class="card lab-card" id="lab-scenarios"></div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     ALGORİTMALAR
+     ===================================================================== -->
+<section class="section section--warm algorithms" id="algoritmalar">
+  <div class="container">
+    <header class="section-head">
+      <span class="eyebrow">Algoritmalar</span>
+      <h2 class="section-title">Dört Strateji, <span>Dört Farklı Davranış</span></h2>
+      <p class="section-lead">Hepsi aynı soruyu cevaplar: CPU boşaldığında sıradaki kim? Farkları, bu soruya verdikleri cevaptadır.</p>
+    </header>
+
+    <div class="algo-grid">
+      <article class="algo-card">
+        <header class="algo-head">
+          <span class="algo-short">FCFS</span>
+          <span class="badge badge--info">Kesmesiz</span>
+        </header>
+        <h3>First Come First Serve</h3>
+        <p class="algo-rule">Önce gelen önce çalışır. CPU'yu alan process, işi bitene kadar CPU'yu bırakmaz.</p>
+        <ul class="algo-points">
+          <li class="plus"><b>Artı:</b> Basit ve öngörülebilir; kimsenin sırası kaymaz.</li>
+          <li class="minus"><b>Eksi:</b> Önde uzun bir iş varsa arkasındaki kısa işler de onu bekler (konvoy etkisi).</li>
+        </ul>
+        <button class="btn btn-outline btn-sm" type="button" data-try-algorithm="fcfs">
+          Simülatörde Dene <svg class="icon icon--sm"><use href="#i-arrow-right"/></svg>
+        </button>
+      </article>
+
+      <article class="algo-card">
+        <header class="algo-head">
+          <span class="algo-short">SJF</span>
+          <span class="badge badge--info">Kesmesiz</span>
+        </header>
+        <h3>Shortest Job First</h3>
+        <p class="algo-rule">CPU boşaldığında kuyruktaki en kısa iş seçilir. Daha kısa bir iş gelse bile çalışan iş kesilmez.</p>
+        <ul class="algo-points">
+          <li class="plus"><b>Artı:</b> Ortalama bekleme süresini düşürür; tüm process'ler aynı anda gelirse ortalama beklemeyi en aza indirir.</li>
+          <li class="minus"><b>Eksi:</b> Uzun işler sürekli geride kalabilir (starvation). Gerçek sistemlerde burst süresi önceden bilinmez, tahmin edilir.</li>
+        </ul>
+        <button class="btn btn-outline btn-sm" type="button" data-try-algorithm="sjf">
+          Simülatörde Dene <svg class="icon icon--sm"><use href="#i-arrow-right"/></svg>
+        </button>
+      </article>
+
+      <article class="algo-card">
+        <header class="algo-head">
+          <span class="algo-short">Priority</span>
+          <span class="badge badge--info">Kesmesiz</span>
+        </header>
+        <h3>Priority Scheduling</h3>
+        <p class="algo-rule">CPU boşaldığında en öncelikli iş seçilir (küçük sayı = yüksek öncelik). Eşitlikte önce gelen çalışır.</p>
+        <ul class="algo-points">
+          <li class="plus"><b>Artı:</b> Önemli işler öne alınabilir.</li>
+          <li class="minus"><b>Eksi:</b> Düşük öncelikli işler hiç sıra alamayabilir (starvation). Çözümü, bekleyen işin önceliğini zamanla artırmaktır (aging).</li>
+        </ul>
+        <button class="btn btn-outline btn-sm" type="button" data-try-algorithm="priority">
+          Simülatörde Dene <svg class="icon icon--sm"><use href="#i-arrow-right"/></svg>
+        </button>
+      </article>
+
+      <article class="algo-card">
+        <header class="algo-head">
+          <span class="algo-short">RR</span>
+          <span class="badge badge--warn">Kesmeli</span>
+        </header>
+        <h3>Round Robin</h3>
+        <p class="algo-rule">Herkes sırayla en fazla quantum kadar çalışır. İşi bitmeyen process kesilir ve kuyruğun sonuna geçer.</p>
+        <ul class="algo-points">
+          <li class="plus"><b>Artı:</b> Herkes CPU'ya çabuk dokunur; yanıt süresi çok iyidir.</li>
+          <li class="minus"><b>Eksi:</b> Toplam bekleme artabilir. Quantum çok küçükse context switch maliyeti artar, çok büyükse FCFS gibi davranır.</li>
+        </ul>
+        <button class="btn btn-outline btn-sm" type="button" data-try-algorithm="rr">
+          Simülatörde Dene <svg class="icon icon--sm"><use href="#i-arrow-right"/></svg>
+        </button>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     MİMARİ
+     ===================================================================== -->
+<section class="section architecture" id="mimari">
+  <div class="container">
+    <header class="section-head">
+      <span class="eyebrow">Yazılım Mimarisi</span>
+      <h2 class="section-title">Modüler ve <span>Genişletilebilir Motor</span></h2>
+      <p class="section-lead">Her katmanın tek bir görevi var. Yeni bir algoritma eklemek mevcut koda dokunmadan, tek bir dosyayla mümkün.</p>
+    </header>
+
+    <div class="arch-layout">
+      <div class="arch-diagram" role="img" aria-label="Veri akışı: Kullanıcı arayüzü, Process Manager, Simulation Engine, algoritmalar, Metrics Calculator, Gantt ve grafikler, Karşılaştırma ve rapor">
+        <div class="arch-node arch-node--ui"><svg class="icon"><use href="#i-sliders"/></svg> Kullanıcı Arayüzü <small>process girişi, algoritma seçimi</small></div>
+        <div class="arch-link"></div>
+        <div class="arch-node"><svg class="icon"><use href="#i-shield"/></svg> Process Manager <small>girdi doğrulama</small></div>
+        <div class="arch-link"></div>
+        <div class="arch-node arch-node--core"><svg class="icon"><use href="#i-cpu"/></svg> Simulation Engine <small>orkestrasyon + plan doğrulama</small></div>
+        <div class="arch-link"></div>
+        <div class="arch-algos">
+          <span>FCFS</span><span>SJF</span><span>Priority</span><span>Round Robin</span>
+          <span class="arch-algos-new">+ yeni algoritma</span>
+        </div>
+        <div class="arch-link"></div>
+        <div class="arch-node"><svg class="icon"><use href="#i-gauge"/></svg> Metrics Calculator <small>WT, TAT, RT, CPU kullanımı</small></div>
+        <div class="arch-link"></div>
+        <div class="arch-split">
+          <div class="arch-node"><svg class="icon"><use href="#i-gantt"/></svg> Gantt & Grafikler</div>
+          <div class="arch-node"><svg class="icon"><use href="#i-compare"/></svg> Karşılaştırma & Rapor</div>
+        </div>
+      </div>
+
+      <div class="arch-side">
+        <div class="arch-principles">
+          <div class="principle">
+            <svg class="icon icon--lg"><use href="#i-puzzle"/></svg>
+            <div>
+              <h3>Strategy deseni</h3>
+              <p>Motor hangi algoritmayla çalıştığını bilmez. Her algoritma aynı <code>schedule()</code> sözleşmesine uyar.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <svg class="icon icon--lg"><use href="#i-layers"/></svg>
+            <div>
+              <h3>Template Method</h3>
+              <p>Kesmesiz algoritmalar ortak döngüyü paylaşır. Her biri sadece "kuyrukta kim öne geçer?" kuralını yazar.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <svg class="icon icon--lg"><use href="#i-book"/></svg>
+            <div>
+              <h3>Kayıt defteri (Registry)</h3>
+              <p>Algoritmalar kendini kaydeder. Arayüz, karşılaştırma ve rapor yeni algoritmayı otomatik tanır.</p>
+            </div>
+          </div>
+          <div class="principle">
+            <svg class="icon icon--lg"><use href="#i-shield"/></svg>
+            <div>
+              <h3>Güvenlik ağı</h3>
+              <p>Motor her planı doğrular: çakışma, gelmeden çalışma ya da eksik süre varsa açık bir hata mesajı verir.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="code-card">
+          <div class="code-card-head">
+            <span><svg class="icon icon--sm"><use href="#i-code"/></svg> Yeni algoritma = tek dosya</span>
+            <span class="muted">js/algorithms/ljf.js</span>
+          </div>
+<pre><code><span class="tok-k">class</span> LJF <span class="tok-k">extends</span> NonPreemptiveAlgorithm {
+  <span class="tok-f">constructor</span>() {
+    <span class="tok-k">super</span>({ id: <span class="tok-s">'ljf'</span>, name: <span class="tok-s">'Longest Job First'</span>, shortName: <span class="tok-s">'LJF'</span> });
+  }
+  <span class="tok-c">// Kuyrukta kim öne geçer? → en uzun iş</span>
+  <span class="tok-f">compare</span>(a, b) {
+    <span class="tok-k">return</span> b.burstTime - a.burstTime || compareByArrival(a, b);
+  }
+}
+CodeFlow.algorithms.<span class="tok-f">register</span>(<span class="tok-k">new</span> LJF());</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     YOL HARİTASI
+     ===================================================================== -->
+<section class="section section--soft roadmap" id="yol-haritasi">
+  <div class="container">
+    <header class="section-head">
+      <span class="eyebrow">Haftalık Plan</span>
+      <h2 class="section-title">11 Haftalık <span>Yol Haritası</span></h2>
+      <p class="section-lead">Analiz → temel yapı → algoritmalar → hesaplamalar → çıktı → test → dokümantasyon</p>
+    </header>
+    <ol class="roadmap-grid">
+      <li><span class="week">Hafta 1</span><h3>Gereksinim ve teknoloji</h3><p>Kapsam, gereksinimler (FR-01…FR-10), teknoloji kararı</p></li>
+      <li><span class="week">Hafta 2</span><h3>Sistem tasarımı</h3><p>Process modeli, sınıf ve bileşen diyagramları</p></li>
+      <li><span class="week">Hafta 3</span><h3>Simülasyon altyapısı + FCFS</h3><p>Simulation Engine, ilk Gantt şeması</p></li>
+      <li><span class="week">Hafta 4</span><h3>SJF</h3><p>Kesmesiz SJF, eşitlik kuralları, testler</p></li>
+      <li><span class="week">Hafta 5</span><h3>Priority Scheduling</h3><p>Öncelik yönü kararı, eşit öncelik testleri</p></li>
+      <li><span class="week">Hafta 6</span><h3>Round Robin</h3><p>Quantum, kesme ve kuyruğa geri dönüş</p></li>
+      <li><span class="week">Hafta 7</span><h3>Gantt Chart</h3><p>Görsel zaman çizelgesi, IDLE gösterimi, adım adım oynatma</p></li>
+      <li><span class="week">Hafta 8</span><h3>Performans metrikleri</h3><p>Otomatik metrik motoru, CPU kullanımı</p></li>
+      <li><span class="week">Hafta 9</span><h3>Karşılaştırma ve analiz</h3><p>Karşılaştırma tablosu, grafikler, rapor</p></li>
+      <li><span class="week">Hafta 10</span><h3>Test ve hata düzeltme</h3><p>Uç durumlar, büyük senaryolar, hata listesi</p></li>
+      <li><span class="week">Hafta 11</span><h3>Son düzenlemeler ve sunum</h3><p>Refactoring, README, demo senaryosu, sunum</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- =====================================================================
+     EKİP
+     ===================================================================== -->
+<section class="section team" id="ekip">
+  <div class="container">
+    <header class="section-head">
+      <span class="eyebrow">Ekip</span>
+      <h2 class="section-title">Projenin <span>Arkasındakiler</span></h2>
+    </header>
+    <div class="team-grid">
+      <article class="member">
+        <span class="avatar" aria-hidden="true">BA</span>
+        <h3>Berra Armutlu</h3>
+        <p class="member-no">202403011036</p>
+        <span class="chip">Algoritma Motoru</span>
+        <p>Zamanlama algoritmaları ve simülasyon motoru.</p>
+      </article>
+      <article class="member">
+        <span class="avatar" aria-hidden="true">FG</span>
+        <h3>Fırat Gadırcı</h3>
+        <p class="member-no">202403011038</p>
+        <span class="chip">Arayüz &amp; Görselleştirme</span>
+        <p>Landing page, simülatör arayüzü ve Gantt şeması.</p>
+      </article>
+      <article class="member">
+        <span class="avatar" aria-hidden="true">ÖN</span>
+        <h3>Özge Naz Nalbantoğlu</h3>
+        <p class="member-no">202403011034</p>
+        <span class="chip">Metrikler, Test &amp; Doküman</span>
+        <p>Performans metrikleri, karşılaştırma, testler ve dokümantasyon.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     SSS
+     ===================================================================== -->
+<section class="section section--blue faq" id="sss">
+  <div class="container">
+    <header class="section-head">
+      <span class="eyebrow eyebrow--light">SSS</span>
+      <h2 class="faq-title">Sıkça Sorulan Sorular</h2>
+    </header>
+    <div class="faq-list">
+      <details class="faq-item" open>
+        <summary>CPU zamanlama nedir, neden gereklidir?</summary>
+        <p>Bir işlemci çekirdeği aynı anda yalnızca bir process çalıştırabilir. İşletim sistemi, hazır bekleyen process'lerden hangisinin CPU'yu ne kadar süre kullanacağına karar verir. Bu karar; bekleme sürelerini, sistemin tepki hızını ve CPU'nun ne kadar verimli kullanıldığını doğrudan etkiler.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Preemptive ve non-preemptive ne demek?</summary>
+        <p>Non-preemptive (kesmesiz) algoritmalarda CPU'yu alan process, işi bitene kadar CPU'yu bırakmaz: FCFS, SJF ve Priority bu projede böyle çalışır. Preemptive (kesmeli) algoritmalarda işletim sistemi çalışan process'i yarıda kesip CPU'yu başka bir process'e verebilir: Round Robin böyledir.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Hangi algoritma en iyisi?</summary>
+        <p>Tek bir doğru cevap yok. SJF ortalama bekleme süresini genellikle düşürür; Round Robin ise herkesin CPU'ya hızlıca ilk kez dokunmasını sağlar. Bu yüzden CodeFlow tek bir kazanan ilan etmez, her metrikte en iyi değeri veren algoritmayı ayrı ayrı gösterir.</p>
+      </details>
+      <details class="faq-item">
+        <summary>SJF'yi neden kesmesiz (non-preemptive) uyguladınız?</summary>
+        <p>İlk sürümü sade tutmak için. SJF'nin kesmeli sürümü olan SRTF (Shortest Remaining Time First), motorun genişletilebilir yapısı sayesinde ayrı bir dosya olarak eklenebilir.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Priority'de neden küçük sayı daha öncelikli?</summary>
+        <p>Bu, proje başında aldığımız bir karar; Silberschatz'ın İşletim Sistemleri kitabındaki örneklerde ve Linux'taki nice değerlerinde de küçük sayı yüksek öncelik anlamına gelir. CodeFlow'da 0 en yüksek önceliktir. Eşit öncelikte önce erken gelen, o da eşitse tabloya önce girilen seçilir.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Round Robin'de quantum nasıl seçilmeli?</summary>
+        <p>Quantum çok küçükse process'ler sık sık kesilir ve context switch sayısı artar. Çok büyükse Round Robin, FCFS'e dönüşür: quantum en uzun burst süresine eşit ya da ondan büyükse sonuç FCFS ile birebir aynıdır. Senaryo Laboratuvarı'ndaki quantum deneyiyle bu etkiyi kendi verinizde görebilirsiniz.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Eşitlik durumlarında sıra nasıl belirleniyor?</summary>
+        <p>Önce algoritmanın kuralına bakılır (SJF'de burst süresi, Priority'de öncelik). Eşitlik sürerse önce erken gelen, o da eşitse tabloya önce girilen process seçilir. Round Robin'de bir quantum biterken aynı anda yeni bir process gelirse, yeni gelen process kesilen process'ten önce kuyruğa girer.</p>
+      </details>
+      <details class="faq-item">
+        <summary>CPU kullanımı ve diğer metrikler nasıl hesaplanıyor?</summary>
+        <p>Simülasyon saati 0'dan başlar. CPU kullanımı, CPU'nun dolu olduğu sürenin son process'in bittiği ana oranıdır; throughput ise process sayısının aynı süreye oranıdır. Turnaround = Completion − Arrival, Waiting = Turnaround − Burst, Response = İlk çalışma anı − Arrival formülleriyle hesaplanır.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Yeni bir algoritma eklemek ne kadar zor?</summary>
+        <p>js/algorithms klasörüne tek bir dosya eklemek yeterli: SchedulingAlgorithm sınıfından türetin, schedule() metodunu (kesmesiz bir algoritmaysa sadece compare() metodunu) yazın ve register() ile kaydedin. Arayüz, metrikler, Gantt şeması ve karşılaştırma yeni algoritmayı otomatik olarak tanır.</p>
+      </details>
+      <details class="faq-item">
+        <summary>Sonuçların doğru olduğundan nasıl emin olabiliriz?</summary>
+        <p>Proje, tarayıcıda çalışan otomatik testlerle birlikte gelir: planımızdaki veri setleri için elle hesaplanmış sonuçlar ve yüzlerce rastgele senaryoda her algoritmanın kurallarının sağlandığını kontrol eden özellik testleri. Testleri görmek için <a href="tests/index.html">tests/index.html</a> sayfasını açmanız yeterli.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- =====================================================================
+     CTA
+     ===================================================================== -->
+<section class="cta">
+  <div class="container">
+    <div class="cta-inner">
+      <h2>Bir senaryo kurun, <strong>dört algoritmayı yarıştırın.</strong></h2>
+      <div class="cta-actions">
+        <a class="btn btn-glow" href="#simulator">
+          <svg class="icon icon--sm icon--fill"><use href="#i-play"/></svg>
+          Simülatöre Git
+        </a>
+        <a class="btn btn-outline-light" href="tests/index.html">
+          <svg class="icon icon--sm"><use href="#i-shield"/></svg>
+          Testleri Çalıştır
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- =====================================================================
+     FOOTER
+     ===================================================================== -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <a class="logo logo--light" href="#top" aria-label="CodeFlow ana sayfa">
+        <svg class="logo-mark" viewBox="0 0 40 40" aria-hidden="true">
+          <rect width="40" height="40" rx="10" fill="#fff" opacity=".18"/>
+          <rect x="8" y="10" width="14" height="5" rx="2.5" fill="#fff"/>
+          <rect x="16" y="17.5" width="16" height="5" rx="2.5" fill="#fff" opacity=".85"/>
+          <rect x="11" y="25" width="10" height="5" rx="2.5" fill="#fff" opacity=".7"/>
+        </svg>
+        <span class="logo-text">
+          <span class="logo-name"><b>Code</b>Flow</span>
+          <span class="logo-sub">CPU Scheduler</span>
+        </span>
+      </a>
+      <p>CPU zamanlama algoritmalarını görünür ve ölçülebilir hâle getiren bir İşletim Sistemleri ders projesi.</p>
+    </div>
+    <div class="footer-col">
+      <h3>Proje</h3>
+      <a href="#simulator">Simülatör</a>
+      <a href="#karsilastirma">Karşılaştırma</a>
+      <a href="#laboratuvar">Senaryo Laboratuvarı</a>
+      <a href="#algoritmalar">Algoritmalar</a>
+      <a href="#mimari">Mimari</a>
+      <a href="tests/index.html">Testler</a>
+    </div>
+    <div class="footer-col">
+      <h3>Ders</h3>
+      <p><svg class="icon icon--sm"><use href="#i-cap"/></svg> İşletim Sistemleri</p>
+      <p><svg class="icon icon--sm"><use href="#i-calendar"/></svg> 2026–2027 Güz Dönemi</p>
+    </div>
+    <div class="footer-col">
+      <h3>Ekip</h3>
+      <p>Berra Armutlu</p>
+      <p>Fırat Gadırcı</p>
+      <p>Özge Naz Nalbantoğlu</p>
+    </div>
+  </div>
+  <div class="container footer-bottom">
+    <span>© <span data-year>2026</span> CodeFlow Ekibi</span>
+    <span>Eğitim amaçlı hazırlanmıştır.</span>
+  </div>
+</footer>
+
+<!-- Çekirdek (motor) — sıra önemlidir, bkz. js/codeflow.js -->
+<script src="js/codeflow.js"></script>
+<script src="js/models/process.js"></script>
+<script src="js/models/simulation-result.js"></script>
+<script src="js/engine/process-manager.js"></script>
+<script src="js/algorithms/scheduling-algorithm.js"></script>
+<script src="js/algorithms/fcfs.js"></script>
+<script src="js/algorithms/sjf.js"></script>
+<script src="js/algorithms/priority.js"></script>
+<script src="js/algorithms/round-robin.js"></script>
+<script src="js/engine/metrics-calculator.js"></script>
+<script src="js/engine/simulation-engine.js"></script>
+<script src="js/comparison/algorithm-comparator.js"></script>
+<script src="js/scenarios/datasets.js"></script>
+<script src="js/scenarios/scenario-generator.js"></script>
+
+<!-- Görselleştirme ve arayüz -->
+<script src="js/visualization/palette.js"></script>
+<script src="js/ui/dom.js"></script>
+<script src="js/ui/format.js"></script>
+<script src="js/visualization/gantt-chart.js"></script>
+<script src="js/visualization/performance-chart.js"></script>
+<script src="js/ui/step-player.js"></script>
+<script src="js/ui/store.js"></script>
+<script src="js/ui/settings-panel.js"></script>
+<script src="js/ui/process-table.js"></script>
+<script src="js/ui/results-view.js"></script>
+<script src="js/ui/exporter.js"></script>
+<script src="js/ui/comparison-view.js"></script>
+<script src="js/ui/scenario-lab.js"></script>
+<script src="js/ui/page.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

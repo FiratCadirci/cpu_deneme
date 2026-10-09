@@ -1,0 +1,391 @@
+﻿CodeFlow motor dogrulamasi - ham rapor (4 Ekim 2026)
+Uc bagimsiz ajanin ciktisi: (1) kodu gormeden elle hesaplama, (2) farkli yontemle yazilmis referans uygulamayla karsilastirma, (3) isletim sistemleri teorisi ve Turkce metin incelemesi.
+Ozet ve yapilacaklar listesi icin DEVAM-ET.md dosyasina bakin.
+
+########## a6d01115a1cad46a8
+SUMMARY: I found no discrepancies: the engine and the tests agree with my independent hand traces everywhere, so the findings list is empty. I did all the required hand traces before opening anything under js/ or tests/ and saved them, with the ready queue at every decision point, to C:\Users\FIRAT\AppData\Local\Temp\claude\c--Users-FIRAT-Desktop-Denemne\e02a6af4-2584-4cfd-a191-4a368c67c334\scratchpad\verify\oracle\traces.md. Every numeric, Gantt, event-log, stateAt, comparator and sweep expectation in fcfs/sjf/priority/round-robin/metrics/engine.test.js matched my numbers. properties.test.js and process-manager.test.js are consistent with the spec. I then ran the engine in headless Chrome with my own profile on all requested runs, plus extra hand-traced cases, closed-form 1000-process cases, comparator/sweep results and validation boundaries. All matched on the first comparison, so no re-trace was needed. A deliberately wrong canary expectation was flagged (7 failed checks), which shows the harness can catch mismatches. The project suite tests/index.html also passes 99/99. Two behaviours are allowed by the spec, so I did not report them as findings. First, when a preempted process is alone, the event log shows 'preempt X [X]' then 'dispatch X []', while the timeline stays merged and contextSwitches is not incremented. Second, the trace budget is 500,000 queue entries, so even 1000 processes arriving at t=0 with burst 1 give traceTruncated=true; stateAt then returns a correct ready set, ordered by input rather than FIFO.
+COVERAGE: HAND-TRACED BEFORE READING CODE OR TESTS (traces.md): Dataset A under FCFS, SJF, Priority, RR q=1/2/3; Dataset B under FCFS, SJF, Priority, RR q=2; Dataset C under FCFS, SJF, Priority, RR q=2 (CPU utilization 9/17, throughput 3/17, total 17, busy 9, idle 8); Dataset D under FCFS, SJF, Priority, RR q=1/2/3. Edge cases: E1 under all four algorithms; E2 (RR q=2); E3 under SJF and Priority; E4 (SJF); E5 (RR q=1).
+For each run I recorded the full Gantt timeline, per-process completion/turnaround/waiting/response time, the three averages and context switches; totalTime/busy/idle/utilization/throughput were also computed.
+
+STEP 2, TESTS COMPARED (all match): fcfs.test.js (A, B, C, D, mixed input order, late first arrival, non-preemptive case, Dataset C event log); sjf.test.js (A, B, D, E3, equal-burst tie, E4, Dataset A event log); priority.test.js (A, B, D equals FCFS, small number wins, priority 0, equal-priority tie, non-preemptive case, blank priority -> 1); round-robin.test.js (A/B/C/D q=2 with all columns and context switches, E2 timeline and event log, q=1 two-process case, q=100 equals FCFS, quantum default/string/invalid); metrics.test.js (C utilization/throughput, A at 100%, single process under all algorithms, idle case, context switches for RR C q=1 and E5); engine.test.js (LJF on B, stateAt for RR A at t=2/9/20 and FCFS C at t=5, comparator best sets on A, sweep D at q=2 and q=8). properties.test.js and process-manager.test.js were reviewed for spec consistency.
+
+ENGINE RUNS IN HEADLESS CHROME:
+oracle.html: 36 cases, 2040 checks, 0 failures. The cases are the 20 dataset runs above, E1 x4, E2, E3 x2, E4, E5, and X1-X7.
+For each case it checks:
+- the timeline, with my own formatter and with GanttEntry.formatTimeline;
+- that processes come back in input order;
+- per-process completion/turnaround/waiting/response time;
+- startTime against the first slice in the timeline;
+- the three averages;
+- contextSwitches, both from metrics and recomputed from the timeline;
+- totalTime, busy/idle time, utilization, throughput and processCount;
+- options.quantum;
+- that events are chronological and traceTruncated is false;
+- dispatch events with the ready-queue order (in order for FCFS/RR, as a set for SJF/Priority);
+- stateAt(t).running and .ready at EVERY integer t from 0 to totalTime.
+The full event log for RR D q=2 matched exactly, and the RR A q=2 log matched as an ordered subsequence.
+oracle2.html: 12 cases, 8540 checks, 0 failures:
+- X8 (RR q=3 with idle gap and simultaneous arrivals);
+- X9 (complex SJF) and X10 (complex Priority);
+- X11 (FCFS with ties and idle);
+- X12 (lone RR continuation, then an arrival exactly at the slice end);
+- X13 (RR with idle gap and simultaneous arrivals);
+- RR q=4 on Dataset D;
+- L1: 1000 processes x burst 1 under all four algorithms;
+- L2: 1000 processes x burst 100 under RR q=1, at the 100000 burst-sum limit, with stateAt checked at t=1500, 99500 and 99999.
+Also passing in oracle2.html:
+- comparator best sets for B, C and D;
+- sweep on D at q=1,2,3,4,8 for average waiting/turnaround/response time and context switches;
+- 27 validation boundary checks: id of 16 vs 17 characters, duplicate ids after trimming, empty id, priority 0/999/1000/1.5/-1/undefined/blank, burst sum 100000 vs 100001, arrival -1/1.5/blank, burst 0/1.5, 0/1000/1001 processes, quantum 1/1000/1001/0.
+oracle3.html dumped the raw event logs for the continuation and idle-at-start cases and stateAt outside [0, totalTime]; all consistent with the spec.
+The canary confirmed the harness reports failures. tests/index.html: 99/99 passed.
+
+NOT CHECKED: the UI layer; non-integer t for stateAt (the spec uses integer times); FIFO order of stateAt's ready list in truncated mode (the spec only promises a derived set, and set equality was verified).
+########## a5c5f988e0fc0151b
+SUMMARY: I wrote an independent reference scheduler from the SPEC only. It steps the clock one unit at a time, keeps the ready queue explicitly, and merges the per-tick record into a timeline (scratch/ref.js). I did not read js/algorithms/fcfs|sjf|priority|round-robin.js. A seeded harness (scratch/harness.js, run in headless Chrome) compared the engine against it on every run. It checked the full merged timeline with IDLE entries, all 9 per-process fields, all 10 metrics, and stateAt() at every integer t (running, ready order, finished, notArrived, states). It also replayed the trace event by event, checking each event's queue against the queue that should exist right after it. Over 34,000 random scenarios (136,000 runs) and an exhaustive enumeration of 14,424 small scenarios (86,544 runs), there were 0 mismatches in every category. FCFS, SJF, Priority, Round Robin, the metrics, the trace and stateAt queue order all match the SPEC, including every tie-break, the arrival-at-decision-time and arrival-at-slice-end rules, slice merging, idle periods, blank priority defaulting to 1, and context-switch counting across idle gaps. To show this result is meaningful, I added 14 deliberate faults to a copy of the reference and every one was caught; the unmodified reference had 0 mismatches. I also corrupted the engine's own trace on purpose and the replay caught it every time, except for dropped idle events, which carry no state. Separate checks found three small engine issues outside scheduling: a process named __proto__ disappears from stateAt().states; run('rr', …, null) and AlgorithmComparator.compare(…, null) crash with a raw TypeError; and arrival times above 100000 are rejected although the SPEC gives no upper bound.
+COVERAGE: FINAL MISMATCH COUNTS (engine vs reference): 0 in every category (timeline; 9 per-process fields; 10 metrics; stateAt running, ready order, finished, notArrived and states; event order, types, semantics and full replay).
+
+Random batches:
+- 4 batches, 34,000 scenarios = 136,000 runs (scenario x algorithm), about 9.1M stateAt checks, each covering t = 0..totalTime+2.
+- 3 batches use the requested ranges (seeds 20261004 x6000, 99173 x6000, 1337 x20000): n 1-15; arrivals 0-40 in several patterns (all zero, a few shared values, uniform, clusters, sparse with gaps, and arrivals placed on completion times or multiples of q); bursts 1-15 (uniform, small, a few shared values, all equal, near multiples of q); priorities 0-5 (uniform, a few shared values, all equal); q 1-7.
+- Input variations: about 10% of scenarios pass numbers as strings, 8% have ids padded with spaces, 12% have blank or missing priorities, 14% give the quantum as undefined, '' or a string. Ids are shuffled so input order is unrelated to id order.
+- 1 wider batch (seed 314159 x2000): n up to 40, arrivals up to 100, bursts up to 30, q up to 12.
+
+Exhaustive small-scope enumeration: every scenario with n <= 3, arrival 0..3, burst 1..3, priority 0..1, run with fcfs, sjf, priority and rr at q = 1, 2, 3. 14,424 scenarios, 86,544 runs, 0 mismatches.
+
+Checks that the harness can find bugs:
+- 14 deliberate faults in a copy of the reference; all caught, the unmodified reference had 0 mismatches. Scenarios caught out of 1500 per fault: SJF tie-break ignoring arrival 328; process arriving exactly when the CPU frees up not considered (SJF/Priority) 148; RR preempted process queued before same-instant arrivals 410; RR simultaneous arrivals reversed 936; RR slices not merged 701; RR re-dispatch of the same process counted as a switch 701; leading idle missing 1083; switch count reset by idle 544; blank priority defaulting to 0 instead of 1: 158; Priority with larger number first 567; FCFS ties broken by id 757; ready list not sorted 788; and others.
+- Deliberate corruption of the engine's trace: reversed queue caught 1636/1636, swapped same-time events 2400/2400, dropped event 2165/2400 (the misses are dropped idle events, which carry no state).
+
+Extras, all 0 mismatches:
+- Datasets A-D (16 runs).
+- ScenarioGenerator output for 400 settings (1600 runs).
+- AlgorithmComparator.compare on 400 scenarios, including the best-per-metric sets recomputed from the reference, plus sweep('rr', quantum 1..7) on 100 scenarios (2300 runs).
+- 1000-process scenarios (total burst exactly 100000 at q=1, and random bursts at q=7) where the trace is dropped (traceTruncated=true): timeline, per-process fields and metrics identical; stateAt running, finished, notArrived and the ready SET identical on about 300 sampled t each.
+- Medium scenarios (n = 120-270) with the trace kept: full per-t state check, 24 runs.
+- Extremes: arrival 100000 with burst 100000; one process at 100000 and one at 0; q = 1000.
+- RR with q=1000 gives the same timeline as FCFS on 500 scenarios.
+- Inputs are never modified and repeated runs are identical (300 scenarios); formatTimeline output (300).
+- 36 validation boundary cases from the SPEC: only 1 deviation (finding 3).
+
+Not checked:
+- UI files (js/ui/page.js, index.html, css/landing.css), which another agent was writing during my run.
+- stateAt at non-integer or negative t.
+- Validation beyond those 36 cases.
+
+Version check: all 14 engine files were last modified by 22:28:33, before my first run at 22:37:55, so the results apply to the current engine.
+
+Observation, not reported as a bug: when the trace is dropped, stateAt().ready falls back to arrival order. That differs from the real queue order for SJF, Priority and RR (the sets match), which the SPEC allows ("derived ready set").
+
+Scratch files in C:\Users\FIRAT\AppData\Local\Temp\claude\c--Users-FIRAT-Desktop-Denemne\e02a6af4-2584-4cfd-a191-4a368c67c334\scratchpad\verify\differential:
+- ref.js: the reference scheduler
+- harness.js: comparisons and automatic shrinking of failing cases
+- mutants.js: the deliberate-fault checks
+- exhaustive.js: the small-scope enumeration
+- extras.js: datasets, generator, comparator, large scenarios, special ids, validation
+- repro.js: the exact reproductions
+- run.ps1: the headless Chrome runner
+Nothing under C:\Users\FIRAT\Desktop\codeflow was modified by me.
+--- [minor/bug] A process with id '__proto__' is missing from stateAt().states (C:\Users\FIRAT\Desktop\codeflow\js\engine\simulation-engine.js)
+    EVIDENCE: stateAt builds the map with a plain object literal (`const states = {}; ... states[p.id] = ...`, lines 176-182). Assigning to the key '__proto__' changes the object's prototype instead of adding a key, so the process is lost. The id is valid: ProcessManager.validate([{id:'__proto__',arrivalTime:0,burstTime:1}]) returns []. Reproduction: r = SimulationEngine.run('fcfs', [{id:'__proto__', arrivalTime:0, burstTime:1, priority:1}]); s = SimulationEngine.stateAt(r, 0). Expected s.states = {"__proto__":"running"}. Actual: timeline 'P __proto__ 0-1' and running "__proto__" are correct, but JSON.stringify(s.states) = '{}', Object.keys(s.states) = [], s.states['__proto__'] === Object.prototype. Second case: run('rr', [{id:'__proto__',arrivalTime:0,burstTime:2},{id:'B',arrivalTime:0,burstTime:1}], {quantum:1}) gives states {"B":"ready"} at t=0, {"B":"running"} at t=1 and {"B":"terminated"} at t=2 and t=3; '__proto__' never appears, while running, ready and finished are correct. Ids such as constructor, toString, hasOwnProperty and valueOf work correctly.
+    FIX: Build the map so the key cannot reach the prototype, e.g. `const states = Object.fromEntries(result.processes.map((p) => [p.id, stateOf(p)]))` or `const states = Object.create(null)`. Alternatively, reject '__proto__' as a process id in ProcessManager.validate.
+--- [nit/robustness] run('rr', processes, null) and AlgorithmComparator.compare(processes, null) crash with a raw TypeError (C:\Users\FIRAT\Desktop\codeflow\js\engine\simulation-engine.js)
+    EVIDENCE: resolveOptions(algorithm, options = {}) (lines 19-23) reads `options[param.key]`. The `= {}` default only applies when options is undefined, not null. The JSDoc marks options as optional (`@param {Object} [options]`). Input: procs = [{id:'A',arrivalTime:0,burstTime:3,priority:1}]. Expected: default quantum 2 (as with undefined) or a ValidationError. Actual: run('rr', procs, null) throws TypeError 'Cannot read properties of null (reading 'quantum')', which is not a ValidationError. By contrast, run('rr', procs, undefined) works with q=2 and run('fcfs', procs, null) works. AlgorithmComparator.compare(procs, null) throws the same TypeError because its own `options = {}` default also does not catch null.
+    FIX: Normalise the value at the start: `options = options || {};` in resolveOptions (or in run) and in AlgorithmComparator.compare.
+--- [nit/spec-mismatch] Arrival times above 100000 are rejected, but the SPEC sets no upper bound (C:\Users\FIRAT\Desktop\codeflow\js\engine\process-manager.js)
+    EVIDENCE: The SPEC validation rules say only 'integer arrival >= 0'. The engine caps arrival at LIMITS.maxTime = 100000 (process.js line 27; process-manager.js FIELDS line 21). Input: run('fcfs', [{id:'A', arrivalTime:100001, burstTime:1, priority:1}]). Expected per the SPEC: valid, timeline 'IDLE 0-100000 | A 100000-100001'. Actual: ValidationError [{index:0, field:'arrivalTime', message:'Satır 1 (A): Arrival Time 0 ile 100000 arasında olmalı.'}]. arrivalTime 100000 is accepted. The cap is documented in LIMITS, so it is probably intentional and the SPEC is simply incomplete.
+    FIX: Add the arrival cap (0..100000) to the SPEC and documentation, or remove the arrival upper bound if it is not needed.
+########## a768bb48924cd0e5c
+SUMMARY: I read all 14 engine files, the full test suite, the UI files that existed (dom.js, format.js, palette.js, page.js) and the user-facing index.html, and checked every Turkish definition and claim against Silberschatz and Tanenbaum. I ran two headless-Chrome probes to confirm behaviour rather than reasoning from the code alone. The engine is correct by textbook standards: it reproduces Silberschatz's FCFS, SJF, Priority and RR averages (17 and 3, 7, 8.2, 17/3) and Tanenbaum's SJF counterexample (4.6 vs 4.4) exactly, and I found no scheduling bug. The most serious problem is factual, not theoretical: index.html calls this an 'İşletim Sistemleri' course project in 4 places, but the assignment brief says 'Bilgisayar Yazılımı Tasarımı ve Mimarisi'. The brief and the page also spell the surname differently (Gaddıcı vs Gadırcı), so both need confirming with the team. On theory, several texts state facts that are only true in CodeFlow as general definitions: non-preemptive = 'until it finishes', process = 'a program that wants the CPU', burst = 'total time'. Other problems: the RR tie rule is overstated as 'the most common textbook convention'; the SJF and RR pros/cons omit the metric being optimised or cite a context-switch cost the model sets to 0; the comparator always marks all four algorithms as best for utilization and throughput; and the 'one file, no existing code touched' extensibility claim ignores the script list in index.html. Where conventions differ from textbook practice, I recommend keeping each one and explaining it in the UI; a 'Model varsayımları' box would cover most of them at once. The Turkish issues are minor and each finding gives the exact replacement string.
+COVERAGE: Read in full: the 14 engine files (js/codeflow.js through js/scenarios/scenario-generator.js), tests/*.js, tests/lib/mini-test.js, tests/index.html, js/ui/dom.js, js/ui/format.js, js/ui/page.js, js/visualization/palette.js, C:\Users\FIRAT\Desktop\codeflow\index.html (935 lines), and the assignment brief C:\Users\FIRAT\Desktop\Denemne\cpu zamanlama ptojesi özet gpt çıktısı.txt. I grepped every apostrophe+suffix in js/, tests/ and index.html and checked each against the suffix rules.
+
+Executed in headless Chrome with my own profile. Files are in C:\Users\FIRAT\AppData\Local\Temp\claude\c--Users-FIRAT-Desktop-Denemne\e02a6af4-2584-4cfd-a191-4a368c67c334\scratchpad\verify\theory (probe.html, probe2.html, dom.html, dom2.html):
+- Silberschatz FCFS (24,3,3 and 3,3,24), SJF (6,8,7,3), Priority (5-process example) and RR q=4 examples
+- Silberschatz's quantum-vs-context-switch figure: one 10-unit process at q=12/6/1
+- Late first arrival, P1(3,2): utilization and throughput
+- RR tie case P1(0,4), P2(2,2), q=2
+- Comparator 'best' marks on Datasets A–D plus 300 seeded random scenarios
+- 40,000 random small instances (n=2–6, arrival 0–8, burst 1–8, q=1–4):
+  - SJF vs FCFS average waiting time: 0 cases where SJF was worse
+  - RR vs FCFS response time: 0 per-process cases where RR was worse
+  - RR vs SJF average response time: counterexample found
+- Tanenbaum's §2.4.2 counterexample (A–E)
+- Dataset D quantum sweep (1, 2, 4, 8)
+- Exact text of the validation messages, algorithm names and descriptions, dataset descriptions and metric labels
+- stateAt state labels before a process's arrival
+
+NOT checked:
+- UI modules that index.html references but which did not exist yet: gantt-chart.js, performance-chart.js, step-player.js, store.js, settings-panel.js, process-table.js, results-view.js, exporter.js, comparison-view.js, scenario-lab.js, app.js. Also css/*.css.
+
+Caveats:
+- index.html was being edited during the review. A data-* attribute mismatch with page.js that I first saw was already fixed when I re-checked. The index.html line numbers I cite are as of the end of this review.
+- Textbook quotations come from my knowledge of Silberschatz (10th ed., Ch. 3 and 5) and Tanenbaum (MOS 4th ed., §2.4). I did not re-check them against a physical copy.
+
+Nothing under C:\Users\FIRAT\Desktop\codeflow was created, modified or deleted.
+--- [major/spec-mismatch] Course name on the page contradicts the assignment brief (C:\Users\FIRAT\Desktop\codeflow\index.html)
+    EVIDENCE: Brief C:\Users\FIRAT\Desktop\Denemne\cpu zamanlama ptojesi özet gpt çıktısı.txt line 3: "Ders: Bilgisayar Yazılımı Tasarımı ve Mimarisi". Line 783 also says "Yazılım Tasarımı ve Mimarisi dersi açısından değerli". index.html instead says:
+- l.7 meta: "...bir İşletim Sistemleri ders projesidir."
+- l.132 hero badge: "İşletim Sistemleri Dersi Projesi · 2026–2027 Güz"
+- l.874: "...bir İşletim Sistemleri ders projesi."
+- l.887 footer under 'Ders': "İşletim Sistemleri"
+
+The earlier conversation already flagged this ("Ders adı tutmuyor... Sayfaya doğru olanı yazın") and it is still unresolved. This review's own task prompt also calls it an 'Operating Systems course', so the official name must be confirmed with the syllabus or registration system.
+    FIX: Confirm the official course name. If the brief is right:
+- Hero: "Bilgisayar Yazılımı Tasarımı ve Mimarisi Dersi Projesi · 2026–2027 Güz"
+- Meta (l.7): "CodeFlow; FCFS, SJF, Priority ve Round Robin algoritmalarını simüle eden, Gantt şemasıyla adım adım gösteren ve performanslarını karşılaştıran bir Bilgisayar Yazılımı Tasarımı ve Mimarisi ders projesidir (konu: işletim sistemlerinde CPU zamanlama)."
+- l.874: "...hâle getiren bir Bilgisayar Yazılımı Tasarımı ve Mimarisi ders projesi."
+- Footer 'Ders': "Bilgisayar Yazılımı Tasarımı ve Mimarisi"
+
+Keep 'İşletim sistemlerinde CPU zamanlama' only as the project topic.
+--- [minor/wording] Team member surname differs between brief and page (C:\Users\FIRAT\Desktop\codeflow\index.html)
+    EVIDENCE: Brief line 12: "Fırat Gaddıcı". index.html l.763 (team card) and l.893 (footer): "Fırat Gadırcı". One of the two is a typo. The brief is a GPT summary, so it may itself be the wrong one.
+    FIX: Confirm the correct spelling with Fırat and use it everywhere: team card, footer, README and report.
+--- [minor/spec-mismatch] Non-preemptive defined as 'until it finishes' (I/O case missing) in FAQ and comments (C:\Users\FIRAT\Desktop\codeflow\index.html)
+    EVIDENCE: Silberschatz (Preemptive and Nonpreemptive Scheduling): the process keeps the CPU "until it releases it either by terminating or by switching to the waiting state".
+
+Where CodeFlow states only the first half, as a general definition:
+- FAQ l.795: "Non-preemptive (kesmesiz) algoritmalarda CPU'yu alan process, işi bitene kadar CPU'yu bırakmaz"
+- index.html l.572
+- js/algorithms/fcfs.js l.5: "Kesmesizdir: CPU'yu alan process işi bitene kadar bırakmaz."
+- js/algorithms/fcfs.js l.21
+- js/algorithms/scheduling-algorithm.js l.107-108 and l.147
+
+This is only true because CodeFlow has no I/O; a student who copies the FAQ text into an exam loses the I/O case.
+
+Related: l.562 says the decision is made only when "CPU boşaldığında", but Round Robin also decides when the quantum expires.
+    FIX: FAQ l.795: "Non-preemptive (kesmesiz) zamanlamada CPU'yu alan process, işi bitene ya da kendisi beklemeye (örneğin bir I/O işlemine) geçene kadar CPU'yu bırakmaz; işletim sistemi onu zorla kesmez. CodeFlow I/O'yu modellemediği için bu projede bu, 'işi bitene kadar' demektir: FCFS, SJF ve Priority böyle çalışır. Preemptive (kesmeli) zamanlamada ise işletim sistemi çalışan process'i yarıda kesip CPU'yu başka bir process'e verebilir: Round Robin, quantum dolunca keser."
+
+Code comments: append "(I/O modellenmediği için)" after "işi bitene kadar".
+
+l.562: "Hepsi aynı soruyu cevaplar: CPU boşaldığında (Round Robin'de ayrıca quantum dolduğunda) sıradaki kim?"
+--- [minor/spec-mismatch] Process defined as 'a program that wants the CPU'; burst called 'total time' without stating the single-burst model (C:\Users\FIRAT\Desktop\codeflow\js\models\process.js)
+    EVIDENCE: Two separate problems:
+1. process.js l.4: "Process, CPU'da çalışmak isteyen bir programdır." Silberschatz (Process Concept): "a process is a program in execution... A program by itself is not a process; a program is a passive entity".
+2. process.js l.7: "burstTime → CPU'da çalışması gereken toplam süre". index.html l.328 says the same: "Process'in CPU'da harcaması gereken toplam süre." In the textbook a burst is one CPU burst of the CPU–I/O burst cycle; Silberschatz notes SJF should really be called "shortest-next-CPU-burst". Burst equals total CPU time only because CodeFlow gives each process a single burst, and that is never stated.
+    FIX: process.js l.4: "Process (süreç), yürütülmekte olan bir programdır (program in execution). CodeFlow her process'i tek bir CPU burst'ünden oluşan bir iş olarak modeller (I/O yok). Simülasyon için bilmemiz gerekenler:"
+
+process.js l.7: "burstTime → CPU burst süresi; bu modelde process'in CPU'da geçireceği toplam süre (Burst Time)"
+
+index.html l.328: "Process'in CPU'da çalışması gereken süre (CPU burst). CodeFlow'da her process'in tek bir burst'ü olduğu için bu, toplam CPU ihtiyacıdır."
+--- [minor/spec-mismatch] SJF pros: 'en iyisidir' names no metric; the main textbook drawback is missing from the code comment (C:\Users\FIRAT\Desktop\codeflow\js\algorithms\sjf.js)
+    EVIDENCE: sjf.js l.9: "Artı: Ortalama bekleme süresini düşürür (hepsi aynı anda gelirse en iyisidir)."
+
+1. No metric is named. Dataset B (all arrive at t=0): the comparator gives best.avgWaitingTime=[sjf] and best.avgTurnaroundTime=[sjf], but best.avgResponseTime=[rr] (SJF 5, RR 3).
+2. The 'aynı anda' qualifier is correct and must stay. Tanenbaum's §2.4.2 example run in CodeFlow, A(0,2) B(0,4) C(3,1) D(3,1) E(3,1):
+   - SJF: "A 0-2 | B 2-6 | C 6-7 | D 7-8 | E 8-9", avgTAT 4.6, avgWT 2.8
+   - Order B,C,D,E,A via CodeFlow's Priority (B=0, C/D/E=1, A=2): avgTAT 4.4, avgWT 2.6
+   - So with different arrivals, non-preemptive SJF is not optimal.
+3. l.10 lists only starvation. It omits the textbook's key drawback: the burst length must be known in advance (Silberschatz: "there is no way to know the length of the next CPU burst"; it is predicted by exponential averaging). index.html l.591 already mentions this.
+
+In 40,000 random instances SJF's average waiting time never exceeded FCFS's, so 'genellikle düşürür' is safe.
+    FIX: "Artı: Ortalama bekleme süresini FCFS'ye göre genellikle düşürür. Tüm process'ler aynı anda gelirse ortalama bekleme (ve turnaround) süresini en aza indirir, yani bu ölçütte optimaldir; yanıt süresinde ise Round Robin daha iyi olabilir. Gelişler farklıysa kesmesiz SJF optimal değildir (bkz. Tanenbaum'un A–E örneği).
+ * Eksi: Burst süresinin önceden bilinmesi gerekir; gerçek sistemlerde bilinmez, geçmiş burst'lerden tahmin edilir (üstel ortalama). Uzun işler, sürekli gelen kısa işlerin arkasında kalıp aç kalabilir (starvation)."
+--- [minor/spec-mismatch] RR tie rule overstated as 'Ders kitaplarında en yaygın kabul budur' (keep the rule, soften the claim) (C:\Users\FIRAT\Desktop\codeflow\js\algorithms\round-robin.js)
+    EVIDENCE: round-robin.js l.7-8 claim this is the most common textbook convention. Neither textbook defines it:
+- Silberschatz's RR example has all processes arriving at time 0.
+- Tanenbaum §2.4.3 gives no arrival-time example.
+- Course materials use both orders.
+
+The rule changes results. P1(0,4), P2(2,2), q=2:
+- CodeFlow: "P1 0-2 | P2 2-4 | P1 4-6" (WT: P1 2, P2 0)
+- Opposite convention: "P1 0-4 | P2 4-6" (WT: P1 0, P2 2)
+
+The header gloss "Sıralı Zaman Dilimi" (l.2) is not an established Turkish term. "biterken" (l.7) is vague about the exact instant.
+    FIX: Recommendation: KEEP the rule. It is the more common choice in worked solutions and the tests already pin it.
+
+Replace l.7-8 with: "Eşitlik kuralı: Bir dilimin bittiği anda (aynı t'de) gelen process'ler, kesilen process'ten ÖNCE kuyruğa girer. Silberschatz ve Tanenbaum bu durumu açıkça tanımlamaz; ders notlarında ve sınav çözümlerinde yaygın kabul budur, ama tersini kullanan kaynaklar da vardır. Bu yüzden arayüzde açıkça belirtiyoruz."
+
+Header l.2: "Round Robin (RR) — Döngüsel Zamanlama (zaman dilimli)".
+
+The FAQ already explains the rule (index.html l.815). Also add a one-line hint next to the quantum input: "Aynı anda: yeni gelen process, quantum'u dolan process'ten önce kuyruğa girer."
+--- [minor/spec-mismatch] Convention: context-switch counting differs from Silberschatz's quantum figure (keep it, explain it) (C:\Users\FIRAT\Desktop\codeflow\js\engine\metrics-calculator.js)
+    EVIDENCE: Silberschatz's figure on how a smaller quantum increases context switches uses one 10-unit process: q=12 → 0, q=6 → 1, q=1 → 9.
+
+CodeFlow, run('rr', [P1(0,10)]):
+- q=6: contextSwitches=0
+- q=1: contextSwitches=0
+- Timeline is "P1 0-10" in both cases.
+
+P1(0,6) with q=1: the trace records 5 'preempt' and 6 'dispatch' events, but contextSwitches=0. Rule sources: metrics-calculator.js l.12 and l.46, round-robin.js l.9.
+
+Two more conventions:
+- The first dispatch is not counted. Silberschatz FCFS 24,3,3 gives CS=2; answer keys that count the initial load say 3.
+- P1 → IDLE → P2 counts as 1 (Dataset C gives 2).
+
+index.html l.373 mentions a 'maliyet' but never states these rules.
+    FIX: Recommendation: KEEP. It matches the textbook definition: saving the current process's state and restoring a DIFFERENT process's state. Make it visible:
+
+Metric card l.373 and result tooltip: "CPU'nun bir process'ten farklı bir process'e geçme sayısı. İlk yükleme sayılmaz; quantum dolduğunda kuyrukta başka process yoksa aynı process devam eder ve bu sayılmaz; araya IDLE girse bile P1'den P2'ye geçiş 1 sayılır. Gerçek sistemde her geçiş zaman alır; CodeFlow bu süreyi 0 kabul eder."
+
+Optionally add a 'Kesme (preemption) sayısı' column computed from the 'preempt' events, so questions in the style of Silberschatz's figure can be answered.
+--- [minor/spec-mismatch] Comparator always marks all four algorithms 'best' for CPU utilization and throughput (C:\Users\FIRAT\Desktop\codeflow\js\comparison\algorithm-comparator.js)
+    EVIDENCE: Observed ties:
+- Datasets A, B, C, D: best.cpuUtilization and best.throughput are both [fcfs, sjf, priority, rr].
+- 300 random scenarios: 300 of 300 give all four algorithms as best.
+
+Why: all four algorithms are work-conserving, there is no I/O and switch time is 0, so the makespan is identical. The suite's own property test "tüm algoritmalar aynı toplam süreyi ve CPU kullanımını verir" asserts exactly this.
+
+With index.html l.522 "Yeşil: o metrikte en iyi değer", both rows are always fully green. Students will conclude that utilization and throughput never depend on the algorithm. In the textbook they do: the convoy effect lowers CPU and device utilization, and RR switch overhead costs CPU time.
+    FIX: In findBest (l.36-42), return [] when every algorithm ties, so nothing is highlighted, or show 'eşit' instead.
+
+Add a footnote under the comparison table: "Bu modelde (I/O yok, context switch süresi 0) dört algoritma da kuyrukta iş varken CPU'yu boş bırakmadığı için CPU kullanımı ve throughput her zaman aynı çıkar. Algoritmalar arasındaki fark bekleme, dönüş (turnaround), yanıt süresi ve context switch sayısında görülür."
+--- [minor/spec-mismatch] RR pros/cons cite a context-switch 'cost' the model sets to 0; 'toplam' should be 'ortalama'; 'çok iyidir' overstated (C:\Users\FIRAT\Desktop\codeflow\js\algorithms\round-robin.js)
+    EVIDENCE: Wording at round-robin.js l.11-13, index.html l.622-623 and l.504.
+
+(a) "Quantum çok küçükse context switch maliyeti artar", but CodeFlow charges no time per switch. Dataset D sweep:
+- q=1: 21 switches, avgWT 10.75
+- q=2: 11 switches, avgWT 11.25
+- q=4: 6 switches, avgWT 11
+- q=8: 3 switches, avgWT 7.75 (= FCFS)
+- totalTime 22 and utilization 100% for every q
+- So q=1 beats q=2 and q=4 despite having about twice as many switches as q=2, which the text cannot explain.
+
+(b) "Toplam bekleme artabilir" / "toplam bekleme mi": the metric shown is the average.
+
+(c) "yanıt süresi çok iyidir" is too strong. P1(0,10), P2(0,1), q=2: RR avgRT 1 vs SJF avgRT 0.5. Against FCFS it holds: 0 per-process violations in 40,000 random instances.
+
+The FAQ (l.811) asks how to choose a quantum but gives no rule of thumb.
+    FIX: Code comment and algorithm card:
+"Artı: Kuyrukta n process varsa hiçbiri (n−1)×q süresinden fazla beklemeden yeniden CPU'ya gelir; yanıt süresi FCFS'den hiçbir zaman kötü değildir ve genellikle SJF'den de iyidir, bu yüzden etkileşimli sistemlere uygundur.
+Eksi: İşler dönüşümlü ilerlediği için çoğu iş geç biter; ortalama bekleme ve dönüş süresi genellikle SJF'den yüksektir. Quantum çok küçükse context switch sayısı artar (gerçek sistemde her geçiş zaman kaybıdır; CodeFlow bu süreyi 0 kabul eder). Quantum en uzun burst'e eşit ya da ondan büyükse RR, FCFS ile aynı sonucu verir."
+
+Append to FAQ l.811: "Pratik kural (Silberschatz): CPU burst'lerinin yaklaşık %80'i quantum'dan kısa olmalıdır."
+
+l.504: "toplam bekleme mi" → "ortalama bekleme mi".
+--- [minor/spec-mismatch] Extensibility claim 'mevcut koda dokunmadan, tek bir dosyayla' is inaccurate (C:\Users\FIRAT\Desktop\codeflow\index.html)
+    EVIDENCE: Claims at l.641, l.699 ("Yeni algoritma = tek dosya"), FAQ l.823 and js/algorithms/scheduling-algorithm.js l.8-12.
+
+1. index.html loads every module through an explicit list (l.904–934) with no dynamic loading. A new js/algorithms/ljf.js stays invisible until someone adds <script src="js/algorithms/ljf.js"> after l.912 (and to tests/index.html for tests). scheduling-algorithm.js itself says "mevcut kodu değiştirmeyi gerektirmez" and then lists step 4: "index.html'e <script> olarak ekle".
+2. The 'only write compare()' route works only for ordering keys that do not depend on time. NonPreemptiveAlgorithm re-sorts the queue only when a process is admitted (l.129), and compare(a, b) receives no current time. HRRN and Priority with aging, which the code names as an example and as the fix for starvation, cannot be written that way.
+
+The brief makes the extensible engine the instructor's key requirement, so this claim will be probed.
+    FIX: l.641: "Yeni bir algoritma eklemek için motorun ve mevcut algoritmaların koduna dokunmak gerekmez: js/algorithms/ altına yeni bir dosya yazıp index.html'e tek bir <script> satırı eklemek yeterlidir."
+
+l.699: "Yeni algoritma = yeni dosya + tek <script> satırı".
+
+FAQ l.823: "js/algorithms klasörüne yeni bir dosya ekleyin. Kesmesiz ve sıralama kuralı zamana bağlı olmayan bir algoritmaysa (örn. LJF) NonPreemptiveAlgorithm sınıfından türetip sadece compare() yazmanız yeterlidir; HRRN ya da aging uygulanan Priority gibi zamanla değişen kurallar için SchedulingAlgorithm sınıfından türetip schedule() yazılmalıdır. Ardından dosyayı register() ile kaydedip index.html'e <script> olarak ekleyin; arayüz, metrikler, Gantt şeması ve karşılaştırma yeni algoritmayı otomatik olarak tanır."
+--- [minor/wording] Turnaround labelled 'Tamamlanma Süresi' (clashes with Completion Time); metric labels mix languages; 'en kritik' overstated (C:\Users\FIRAT\Desktop\codeflow\js\comparison\algorithm-comparator.js)
+    EVIDENCE: 1. algorithm-comparator.js l.13 uses 'Ort. Tamamlanma Süresi' and index.html l.351 uses "Turnaround Time — Tamamlanma Süresi". The results table also shows a completion-time (CT) column. For Dataset C (FCFS), average completion time is 10.67 and average turnaround is 3. A first-time student reads 'tamamlanma' as completion and expects about 10.67.
+2. The comparator labels 'Throughput' and 'Context Switch' are English, while index.html uses "İş Çıkarma Hızı" and "Bağlam Değiştirme".
+3. index.html l.358 says response time is the "en kritik metriktir". Silberschatz notes that for interactive systems, minimizing the variance of response time can matter more than its average.
+    FIX: METRICS labels:
+- 'Ort. Dönüş Süresi (Turnaround)'
+- 'İş Çıkarma Hızı (Throughput)'
+- 'Bağlam Değiştirme (Context Switch)'
+- Keep 'Ort. Bekleme Süresi', 'Ort. Yanıt Süresi', 'CPU Kullanımı'.
+
+index.html l.351: "Turnaround Time <small>Dönüş Süresi</small>".
+
+Show CT as "Bitiş Zamanı (CT)" in the results table.
+
+l.358: "CPU'ya ilk kez dokunana kadar geçen süre. Etkileşimli sistemlerde en önemli ölçütlerden biridir."
+--- [minor/wording] 'En küçük / En büyük priority' is ambiguous because small number = high priority (C:\Users\FIRAT\Desktop\codeflow\js\scenarios\scenario-generator.js)
+    EVIDENCE: Actual messages:
+- "En küçük priority 0 ile 999 arasında bir tam sayı olmalı."
+- "En büyük priority, en küçük priority'den küçük olamaz."
+
+Sources: l.52-53 and l.59. In CodeFlow the highest priority is the SMALLEST number, so 'en büyük priority' reads as 'en yüksek öncelik', which is the opposite of what the field holds.
+    FIX: Labels: 'En küçük priority değeri' and 'En büyük priority değeri'.
+
+Message: 'En büyük priority değeri, en küçük priority değerinden küçük olamaz.'
+
+Form labels: "Priority değeri (en az)" and "Priority değeri (en çok)".
+--- [nit/wording] Inconsistent suffixes on abbreviations (FCFS'e / RR'da vs SJF'nin / SJF'yi) (C:\Users\FIRAT\Desktop\codeflow\js\algorithms\priority.js)
+    EVIDENCE: Two readings are mixed:
+- Turkish letter names (se-je-fe): "SJF'nin" (datasets.js l.23, engine.test.js l.51), "SJF'yi" (index.html l.802), "SJF'de" (l.815).
+- English reading (ef-si-ef-es, ar-ar): "FCFS'e" (priority.js l.6, round-robin.js l.13, index.html l.811, engine.test.js l.194) and "RR'da" (engine.test.js l.146 and l.156; these test names are shown on tests/index.html).
+
+TDK rule: suffixes follow how the abbreviation is read, and letter-by-letter abbreviations are read with Turkish letter names (ABD'ye, TBMM'nin, TV'ye).
+    FIX: Use Turkish letter names everywhere:
+- "yani FCFS'ye döner"
+- "çok büyükse RR, FCFS'ye dönüşür"
+- "Round Robin, FCFS'ye dönüşür"
+- "stateAt: RR'de t=2 anında kuyruk sırası" and "stateAt: RR'de t=9 ve bitişte"
+- Keep SJF'nin, SJF'yi, SJF'de, CPU'yu, ID'si, P1'in.
+
+If the team prefers the English reading, change SJF'nin → SJF'in and SJF'yi → SJF'i instead. Pick one and apply it everywhere.
+--- [nit/wording] FCFS pros: 'adil (sıra kimseye kaymaz)' / 'kimsenin sırası kaymaz' is unidiomatic and slightly overstated (C:\Users\FIRAT\Desktop\codeflow\js\algorithms\fcfs.js)
+    EVIDENCE: fcfs.js l.7: "Artı: Basit ve adil (sıra kimseye kaymaz)." index.html l.574: "Basit ve öngörülebilir; kimsenin sırası kaymaz."
+
+'Sıra kaymak' is not a standard idiom; the usual ones are 'sırayı atlamak' and 'araya kaynamak'. 'Adil' holds only in the no-starvation sense. Under the convoy effect described in the same comment, short jobs pay for long ones: Silberschatz's 24,3,3 gives avgWT 17 versus 3 in the reverse order, and CodeFlow reproduces both.
+    FIX: fcfs.js l.7: "Artı: Basit ve öngörülebilir; açlık (starvation) olmaz — kimse sırayı atlayamaz, gelen her process eninde sonunda çalışır."
+
+index.html l.574: "Basit ve öngörülebilir; kimse sırayı atlayamaz, açlık (starvation) olmaz."
+--- [nit/spec-mismatch] FCFS official name is 'First-Come, First-Served' (C:\Users\FIRAT\Desktop\codeflow\js\algorithms\fcfs.js)
+    EVIDENCE: fcfs.js l.2 and l.19 (algorithm.name, shown in the UI and reports) and index.html l.571 use "First Come First Serve". Silberschatz ('First-Come, First-Served Scheduling') and Tanenbaum ('First-Come, First-Served') both use 'Served'.
+    FIX: Set name: 'First-Come, First-Served'. Use the same in the header comment and in index.html l.571. The Turkish gloss 'İlk Gelen İlk Çalışır' can stay.
+--- [nit/spec-mismatch] '1, 3'ten önce çalışır' overgeneralizes non-preemptive Priority; aging is undefined in the code comment (C:\Users\FIRAT\Desktop\codeflow\js\algorithms\priority.js)
+    EVIDENCE: priority.js l.5: "(1, 3'ten önce çalışır)". index.html l.334: "Önceliği 1 olan, 3 olandan önce çalışır." Counterexample, P1(0,5,priority 3) and P2(1,2,priority 1): "P1 0-5 | P2 5-7". The priority-3 process runs first because it is already on the CPU (non-preemptive; see also the test 'kesmesizdir'). l.10 says "çözümü \"aging\"dir" without defining aging; index.html l.607 does define it.
+    FIX: priority.js l.5: "KÜÇÜK sayı = YÜKSEK öncelik (ikisi de kuyruktaysa 1, 3'ten önce seçilir)."
+
+index.html l.334: "Küçük sayı = yüksek öncelik. İkisi de kuyrukta bekliyorsa önceliği 1 olan, 3 olandan önce seçilir; çalışan process kesilmez."
+
+priority.js l.10: "Eksi: Düşük öncelikli işler hiç sıra alamayabilir (starvation). Çözümü yaşlandırmadır (aging): bekleyen process'in önceliği zamanla artırılır. CodeFlow'da aging uygulanmamıştır."
+--- [nit/spec-mismatch] Convention: CPU utilization and throughput are measured from t=0 (keep, show the interval) (C:\Users\FIRAT\Desktop\codeflow\js\engine\metrics-calculator.js)
+    EVIDENCE: P1(3,2) gives "IDLE 0-3 | P1 3-5": cpuUtilization 0.4 and throughput 0.2. Measured from the first arrival, as many answer keys do, the values would be 1.0 and 0.5. Sources: metrics-calculator.js l.10, l.67, l.79-80. The FAQ (index.html l.819) states "Simülasyon saati 0'dan başlar", but the metric card (l.362: "Dolu süre ÷ Toplam süre") and the result tiles do not.
+    FIX: Recommendation: KEEP. It is consistent with a Gantt chart that starts at 0 and shows the leading IDLE, and with Silberschatz's examples, which start at 0.
+
+Card l.362: "Dolu süre ÷ Son bitiş zamanı (t=0'dan itibaren)".
+
+Result tile tooltip with numbers: "CPU Kullanımı = 2 ÷ 5 = %40 (t=0'dan son bitişe kadar; baştaki IDLE dahil)".
+--- [nit/spec-mismatch] Convention: RR Gantt merges consecutive quanta of the same process; Silberschatz draws them separately (keep, mark boundaries) (C:\Users\FIRAT\Desktop\codeflow\js\engine\simulation-engine.js)
+    EVIDENCE: Silberschatz's RR example (P1 24, P2 3, P3 3, q=4) draws P1 0-4, P2 4-7, P3 7-10, then P1 10-14, 14-18, 18-22, 22-26, 26-30 as separate blocks. CodeFlow shows "P1 0-4 | P2 4-7 | P3 7-10 | P1 10-30" (buildTimeline, l.92-113). The averages match: avgWT 5.67 = 17/3. An instructor comparing the two pictures will see different charts.
+    FIX: Recommendation: KEEP merging. It is the specified behaviour and consistent with 'same process continuing is not a context switch'.
+
+In the Gantt chart, draw thin dashed quantum boundaries inside a merged block, taking the times from the 'preempt' events. Add a legend line: "Aynı process'in art arda gelen quantum'ları tek blokta gösterilir; kesik çizgiler quantum sınırlarıdır."
+--- [nit/spec-mismatch] Convention: stateAt calls not-yet-arrived processes 'new'; the 'waiting' state never appears (C:\Users\FIRAT\Desktop\codeflow\js\engine\simulation-engine.js)
+    EVIDENCE: P1(0,2), P2(5,1): stateAt(r,1).states = {"P1":"running","P2":"new"}, although P2 does not exist in the system until t=5 (l.181). In Silberschatz's five-state model, 'new' means the process is being created. In CodeFlow, admission (new→ready) happens at the arrival instant, and 'waiting' (I/O) never occurs.
+    FIX: Keep the internal key, but label it "Henüz gelmedi" in the step player (or rename it to 'notArrived').
+
+Add the note: "CodeFlow I/O'yu modellemediği için beş durumlu modeldeki 'waiting (bekleme)' durumu görülmez; process geliş anında doğrudan 'ready' olur."
+--- [minor/spec-mismatch] Convention (umbrella): the model's assumptions are never stated (C:\Users\FIRAT\Desktop\codeflow\index.html)
+    EVIDENCE: Grepping index.html and js/**/*.js for 'I/O', 'varsayım' and '0 kabul' finds nothing except two phrases that imply a cost the simulator does not model: "Gerçek sistemde her geçişin bir maliyeti vardır" (l.373) and "context switch maliyeti artar" (l.623; round-robin.js l.13).
+
+Several visible results only make sense under these unstated assumptions:
+- RT = WT for FCFS, SJF and Priority
+- identical utilization and throughput for all four algorithms
+- no time penalty at q=1 (Dataset D: 21 switches, still 100% utilization)
+    FIX: Add a 'Model varsayımları' box next to the metrics (and a short version in the js/models/process.js header):
+"• Tek CPU (tek çekirdek).
+• Her process tek bir CPU burst'ünden oluşur; I/O modellenmez.
+• Zaman tam sayıdır ve t=0'dan başlar.
+• Context switch ve dispatch süresi 0 kabul edilir; yalnızca geçiş sayısı gösterilir.
+• Burst süreleri önceden bilinir (gerçek sistemlerde SJF için tahmin edilir).
+• Kesmesiz algoritmalarda process başladıktan sonra kesilmediği için yanıt süresi = bekleme süresidir."
+--- [nit/spec-mismatch] Convention: priority direction — keep (already explained); cite the source precisely (C:\Users\FIRAT\Desktop\codeflow\index.html)
+    EVIDENCE: FAQ l.807 cites "Silberschatz'ın İşletim Sistemleri kitabı"; the book's title is 'Operating System Concepts'. Silberschatz explicitly notes that systems differ and assumes low number = high priority. Linux nice (−20 highest) agrees. Tanenbaum's priority-class figure has class 4 as the highest, and Windows uses 0–31 with higher = higher, so an instructor who learned from Tanenbaum may expect the opposite. The blank default (1) is already explained at l.454.
+    FIX: Recommendation: KEEP. Rewrite FAQ l.807: "Bu, proje başında aldığımız bir karar. Silberschatz'ın 'Operating System Concepts' kitabındaki örneklerde ve Linux'un nice değerlerinde de küçük sayı yüksek önceliktir; Tanenbaum'un öncelik sınıfları örneğinde ve Windows'ta ise büyük sayı yüksek önceliktir. CodeFlow'da 0 en yüksek önceliktir; boş bırakılan priority 1 kabul edilir. Eşit öncelikte önce erken gelen, o da eşitse tabloya önce girilen seçilir."
+--- [nit/wording] Dataset descriptions: A overclaims, C is vague, D's 'Uzun burst süreleri' is inaccurate (C:\Users\FIRAT\Desktop\codeflow\js\scenarios\datasets.js)
+    EVIDENCE: - A (l.16): "Algoritmalar arasındaki farkı görmek için en iyi başlangıç." But SJF and Priority produce the identical schedule on Dataset A: "P1 0-5 | P2 5-8 | P4 8-12 | P3 12-20" for both, avgWT 4.75.
+- C (l.30): "Process'ler arasında boşluk var." It is the arrival times that are spread out.
+- D (l.37): "Uzun burst süreleri." The bursts (8, 5, 3, 6) are not longer than Dataset A's (5, 3, 8, 4); they are only long relative to q=2.
+    FIX: A: "Farklı anlarda gelen 4 process. FCFS, SJF ve Round Robin arasındaki farkı görmek için iyi bir başlangıç noktası (bu veride SJF ile Priority aynı sırayı üretir)."
+
+C: "Process'lerin geliş zamanları arasında boşluk var; CPU bu aralıklarda boşta kalır. Gantt'ta IDLE dilimleri ve CPU kullanımındaki düşüş görülür."
+
+D: "Burst süreleri quantum'a (q=2) göre uzun; her process birkaç kez kesilir. Quantum'u değiştirerek Round Robin'in davranışını inceleyin."
+--- [nit/wording] Validation messages: no Turkish thousands separator; range bounds left implicit (C:\Users\FIRAT\Desktop\codeflow\js\engine\process-manager.js)
+    EVIDENCE: Actual output:
+- "Satır 2 (P1): Burst Time 1 ile 100000 arasında olmalı."
+- "Burst Time'ların toplamı en fazla 100000 olabilir (şu an 110000)."
+- "Process sayısı × en uzun burst en fazla 100000 olabilir." (no current value)
+- "Seed 0 ile 999999999 arasında bir tam sayı olmalı."
+
+Sources: process-manager.js l.66 and l.77, simulation-engine.js l.29, scenario-generator.js l.45 and l.65. Turkish groups thousands with a dot (100.000), and the UI layer already formats numbers with tr-TR (js/ui/format.js). "X ile Y arasında" leaves it unclear whether the endpoints are allowed.
+    FIX: Format the numbers with n.toLocaleString('tr-TR') and state the bounds explicitly:
+- "Satır 2 (P1): Burst Time en az 1, en fazla 100.000 olmalı."
+- "Burst Time'ların toplamı en fazla 100.000 olabilir (şu an 110.000)."
+- "Process sayısı × en uzun burst en fazla 100.000 olabilir (şu an 101.000)."
+- "Time Quantum en az 1, en fazla 1.000 olan bir tam sayı olmalı."
+--- [nit/wording] 'hazır kuyrukta beklenen toplam süre' — 'beklenen' also reads as 'expected' (C:\Users\FIRAT\Desktop\codeflow\js\engine\metrics-calculator.js)
+    EVIDENCE: metrics-calculator.js l.8 glosses Waiting Time as "hazır kuyrukta beklenen toplam süre". 'Beklenen süre' is commonly read as 'the expected time', and the equality WT = TAT − BT holds only because there is no I/O.
+    FIX: "Waiting Time = Turnaround Time − Burst Time   hazır kuyrukta geçirilen toplam bekleme süresi (I/O olmadığı için TAT − BT'ye eşittir)"
+########## a75c242e94b5df6cf
+VERDICT: reproduced=True real=False
+The text mismatch is real, but it is not a defect. The page uses the course name the user gave in their own words.
+
+**What I reproduced (my own run):** I wrote a probe page in my scratch dir and ran it in headless Chrome with my own profile. It loads file:///C:/Users/FIRAT/Desktop/codeflow/index.html in an iframe and reads the brief over XHR (with --allow-file-access-from-files). Results:
+- Meta description: "...bir İşletim Sistemleri ders projesidir."
+- Hero badge: "İşletim Sistemleri Dersi Projesi · 2026–2027 Güz"
+- Footer blurb: "...bir İşletim Sistemleri ders projesi."
+- Footer 'Ders' colu

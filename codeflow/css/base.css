@@ -1,0 +1,708 @@
+/* ==========================================================================
+   CodeFlow — temel stiller
+   Renkler, tipografi, düzen, butonlar, kartlar, form elemanları ve tablolar.
+   Diğer tüm CSS dosyaları buradaki değişkenleri (custom properties) kullanır.
+   ========================================================================== */
+
+:root {
+  /* Marka renkleri (landing page'in mavi paleti) */
+  --brand-900: #143a66;
+  --brand-800: #1f4f86;
+  --brand-700: #2b6db3;
+  --brand-600: #3079c6;
+  --brand-500: #4d94e6;
+  --brand-400: #6bb3ff;
+  --brand-200: #bcdcff;
+  --brand-100: #e3effc;
+  --brand-50: #f2f7fd;
+
+  --gradient-brand: linear-gradient(270deg, #2b6db3 0%, #6bb3ff 52.88%, #3079c6 100%);
+  --gradient-brand-soft: linear-gradient(160deg, #2b6db3 0%, #4d94e6 55%, #3079c6 100%);
+  --gradient-heading: linear-gradient(90deg, #1f4f86 0%, #3079c6 45%, #5aa6f5 100%);
+  --gradient-green: linear-gradient(to bottom, #58d164 0%, #2cb842 100%);
+
+  --green-700: #1f8f34;
+  --green-600: #2cb842;
+  --green-100: #e3f8e6;
+
+  /* Metin ve yüzeyler */
+  --ink: #17263a;
+  --ink-soft: #3d5068;
+  --muted: #66788d;
+  --line: #dbe5f0;
+  --line-strong: #c3d3e5;
+  --surface: #ffffff;
+  --surface-soft: #f5f8fc;
+  --surface-warm: #f8f7f5;
+
+  /* Durum renkleri */
+  --danger: #c92a2a;
+  --danger-soft: #fff1f1;
+  --warning: #b35c00;
+  --warning-soft: #fff6e6;
+  --success: #1f8f34;
+  --success-soft: #e9f9ec;
+
+  /* Ölçüler */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 30px;
+  --shadow-sm: 0 2px 8px rgba(23, 38, 58, 0.06);
+  --shadow: 0 10px 30px rgba(31, 79, 134, 0.12);
+  --shadow-lg: 0 24px 60px rgba(31, 79, 134, 0.2);
+
+  --font: 'Instrument Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
+
+  --container: 1300px;
+  --gutter: 24px;
+  --header-h: 84px;
+}
+
+/* --------------------------------------------------------------------------
+   Reset
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--brand-700);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--brand-800);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5 {
+  margin: 0 0 0.5em;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+:focus-visible {
+  outline: 3px solid var(--brand-400);
+  outline-offset: 2px;
+}
+
+section[id] {
+  scroll-margin-top: calc(var(--header-h) + 12px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Düzen
+   -------------------------------------------------------------------------- */
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.section {
+  padding: 96px 0;
+  position: relative;
+}
+
+.section--soft {
+  background: var(--surface-soft);
+}
+
+.section--warm {
+  background: var(--surface-warm);
+}
+
+.section--blue {
+  background: var(--gradient-brand);
+  color: #fff;
+}
+
+.section-head {
+  max-width: 860px;
+  margin: 0 auto 48px;
+  text-align: center;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--brand-100);
+  color: var(--brand-700);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.eyebrow--light {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+.section-title {
+  font-size: clamp(30px, 4vw, 46px);
+  font-weight: 700;
+  background: var(--gradient-heading);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.section-title span {
+  font-weight: 500;
+}
+
+.section-lead {
+  margin: 0 auto;
+  max-width: 720px;
+  color: var(--ink-soft);
+  font-size: 18px;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+}
+
+.stack > * + * {
+  margin-top: 16px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   İkonlar (index.html'deki SVG sprite)
+   -------------------------------------------------------------------------- */
+.icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.icon--sm {
+  width: 16px;
+  height: 16px;
+}
+
+.icon--lg {
+  width: 28px;
+  height: 28px;
+}
+
+.icon--xl {
+  width: 44px;
+  height: 44px;
+}
+
+.icon--fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* --------------------------------------------------------------------------
+   Butonlar
+   -------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 10px 22px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary {
+  background: var(--gradient-brand);
+  background-size: 140% 100%;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(43, 109, 179, 0.3);
+}
+
+.btn-primary:hover {
+  color: #fff;
+  box-shadow: 0 10px 22px rgba(43, 109, 179, 0.38);
+}
+
+.btn-glow {
+  background: var(--gradient-brand);
+  color: #fff;
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.25);
+}
+
+.btn-glow:hover {
+  color: #fff;
+  box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.22);
+}
+
+.btn-green {
+  background: var(--gradient-green);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(44, 184, 66, 0.3);
+}
+
+.btn-green:hover {
+  color: #fff;
+}
+
+.btn-light {
+  background: #fff;
+  color: var(--brand-700);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-light:hover {
+  color: var(--brand-800);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--brand-700);
+  border: 1.5px solid var(--line-strong);
+}
+
+.btn-outline:hover {
+  border-color: var(--brand-500);
+  background: var(--brand-50);
+}
+
+.btn-outline-light {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+}
+
+.btn-outline-light:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1.5px solid #f1c4c4;
+}
+
+.btn-danger:hover {
+  background: var(--danger-soft);
+}
+
+.btn-sm {
+  min-height: 36px;
+  padding: 6px 14px;
+  font-size: 14px;
+}
+
+.btn-xs {
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.btn-icon {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------------
+   Kartlar ve paneller
+   -------------------------------------------------------------------------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.card-head h3,
+.card-head h4 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--brand-800);
+}
+
+.card-blue {
+  background: var(--gradient-brand-soft);
+  color: #fff;
+  border: 0;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* --------------------------------------------------------------------------
+   Form elemanları
+   -------------------------------------------------------------------------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field > span,
+.field > label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.input,
+.select {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 16px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(77, 148, 230, 0.25);
+}
+
+.input[aria-invalid='true'] {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.input--num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Sayı kutularındaki tarayıcı oklarını sadeleştir */
+.input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+.input[type='number']::-webkit-inner-spin-button,
+.input[type='number']::-webkit-outer-spin-button {
+  opacity: 0.5;
+}
+
+/* --------------------------------------------------------------------------
+   Tablolar
+   -------------------------------------------------------------------------- */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 15px;
+}
+
+.table th,
+.table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--surface-soft);
+  white-space: nowrap;
+}
+
+.table td.num,
+.table th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table tbody tr:hover td {
+  background: var(--brand-50);
+}
+
+.table tfoot td {
+  font-weight: 700;
+  background: var(--surface-soft);
+}
+
+/* --------------------------------------------------------------------------
+   Rozetler / çipler
+   -------------------------------------------------------------------------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--brand-100);
+  color: var(--brand-800);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.badge--best {
+  background: var(--green-100);
+  color: var(--green-700);
+}
+
+.badge--info {
+  background: var(--brand-100);
+  color: var(--brand-700);
+}
+
+.badge--warn {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
+/* Process renk noktası (palette.js renkleriyle) */
+.swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex: none;
+}
+
+/* --------------------------------------------------------------------------
+   Uyarı kutuları
+   -------------------------------------------------------------------------- */
+.alert {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  font-size: 15px;
+}
+
+.alert--error {
+  background: var(--danger-soft);
+  color: #8a1c1c;
+  border: 1px solid #f3caca;
+}
+
+.alert--info {
+  background: var(--brand-50);
+  color: var(--brand-800);
+  border: 1px solid var(--brand-100);
+}
+
+.alert--warn {
+  background: var(--warning-soft);
+  color: #7a3f00;
+  border: 1px solid #f5ddb0;
+}
+
+.alert ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+@media (max-width: 900px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .section {
+    padding: 72px 0;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --gutter: 16px;
+    --header-h: 68px;
+  }
+
+  body {
+    font-size: 16px;
+  }
+
+  .section {
+    padding: 56px 0;
+  }
+
+  .section-head {
+    margin-bottom: 32px;
+  }
+
+  .section-lead {
+    font-size: 16px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+}

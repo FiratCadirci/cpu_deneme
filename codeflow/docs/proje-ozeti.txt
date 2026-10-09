@@ -1,0 +1,915 @@
+🖥️ CPU Zamanlayıcı Simülatörü — CodeFlow
+
+Ders: Bilgisayar Yazılımı Tasarımı ve Mimarisi
+Proje: CPU Zamanlayıcı Simülatörü
+Proje Adı: CodeFlow
+Durum: 🟡 Devam Ediyor
+Proje Türü: Simülasyon / Algoritma / Yazılım Mimarisi
+
+👥 Proje Ekibi
+İsim	Öğrenci No	Sorumluluk
+Berra Armutlu	202403011036	TBD
+Fırat Gaddıcı	202403011038	TBD
+Özge Naz Nalbantoğlu	202403011034	TBD
+
+Not: Sorumluluklar proje ilerledikçe netleştirilecek.
+
+🎯 1. Projenin Amacı
+
+CodeFlow, kullanıcı tarafından girilen process bilgilerini farklı CPU scheduling algoritmaları kullanarak simüle eden ve algoritmaların sonuçlarını karşılaştırmalı olarak gösteren bir CPU zamanlayıcı simülatörüdür.
+
+Kullanıcı sisteme process bilgilerini girdikten sonra:
+
+Process'ler sisteme alınır.
+Seçilen scheduling algoritması uygulanır.
+CPU'nun process'leri hangi sırayla çalıştırdığı hesaplanır.
+Gantt Chart oluşturulur.
+Performans metrikleri hesaplanır.
+Farklı algoritmalar karşılaştırılır.
+Sonuçlar raporlanır.
+Desteklenecek algoritmalar
+FCFS — First Come First Serve
+SJF — Shortest Job First
+Priority Scheduling
+Round Robin
+🧠 2. Temel Kavramlar
+Process
+
+Her process için en azından aşağıdaki bilgiler tutulacak:
+
+Process ID
+Arrival Time
+Burst Time
+Priority
+
+Round Robin için ayrıca:
+
+Time Quantum
+
+kullanılacak.
+
+Örnek
+Process	Arrival Time	Burst Time	Priority
+P1	0	5	2
+P2	1	3	1
+P3	2	8	3
+P4	3	4	2
+📐 3. Hesaplanacak Performans Metrikleri
+
+Projenin önemli noktalarından biri sadece process sırasını göstermek değil, algoritmaların performansını ölçmek olacak.
+
+Waiting Time
+
+Bir process'in CPU'da çalışmaya başlamadan önce beklediği toplam süre.
+
+Waiting Time = Turnaround Time - Burst Time
+Turnaround Time
+
+Process'in sisteme girişinden tamamlanmasına kadar geçen süre.
+
+Turnaround Time = Completion Time - Arrival Time
+Response Time
+
+Process'in sisteme girişinden CPU'yu ilk kez almasına kadar geçen süre.
+
+Response Time = First Start Time - Arrival Time
+Ortalama değerler
+
+Her algoritma için:
+
+Average Waiting Time
+Average Turnaround Time
+Average Response Time
+
+hesaplanacak.
+
+🏗️ 4. Proje Mimarisi
+
+Proje mümkün olduğunca modüler ve genişletilebilir tasarlanacak.
+
+Önerilen yapı:
+
+                 ┌──────────────────┐
+                 │      UI /        │
+                 │   Kullanıcı      │
+                 │     Girdisi      │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                 ┌──────────────────┐
+                 │ Process Manager  │
+                 └────────┬─────────┘
+                          │
+                          ▼
+                ┌────────────────────┐
+                │ Scheduling Engine  │
+                └─────────┬──────────┘
+                          │
+             ┌────────────┼─────────────┐
+             ▼            ▼             ▼
+          FCFS           SJF        Priority
+             │
+             ▼
+       Round Robin
+             │
+             ▼
+       ┌─────────────┐
+       │ Calculation │
+       │    Engine   │
+       └──────┬──────┘
+              │
+              ▼
+       ┌─────────────┐
+       │ Gantt Chart │
+       └──────┬──────┘
+              │
+              ▼
+       ┌─────────────┐
+       │ Comparison   │
+       │ & Reporting │
+       └─────────────┘
+⭐ 5. Projenin Öne Çıkan 5 Özelliği
+
+Fotoğraftaki gereksinime göre projenin diğer basit CPU scheduling projelerinden ayrılmasını sağlayacak özellikler:
+
+1. 🧩 Modüler ve Genişletilebilir Algoritma Motoru
+
+Scheduling algoritmaları birbirinden bağımsız modüller olacak.
+
+Örneğin:
+
+SchedulingAlgorithm
+        │
+ ┌──────┼────────┬──────────┐
+ │      │        │          │
+FCFS   SJF   Priority   RoundRobin
+
+İleride yeni bir algoritma eklemek mevcut sistemi bozmamalı.
+
+Örneğin:
+
+MLFQ
+SRTF
+HRRN
+
+gibi algoritmalar sonradan eklenebilir.
+
+2. 📊 Görsel ve Adım Adım İşlenebilir Gantt Çizelgesi
+
+Sistem sadece sonucu göstermeyecek.
+
+Örneğin:
+
+0    5    8    12
+| P1 | P2 | P4 |
+
+kullanıcı hangi process'in hangi zaman aralığında çalıştığını görmeli.
+
+Mümkünse process'lerin:
+
+Başlangıç zamanı
+Bitiş zamanı
+CPU'da geçirdiği süre
+Beklediği süre
+
+görsel olarak takip edilebilmeli.
+
+3. 📈 Otomatik Metrik Motoru
+
+Algoritma çalıştırıldığında metrikler otomatik hesaplanacak.
+
+Örneğin:
+
+FCFS
+
+Average Waiting Time     : 5.25
+Average Turnaround Time  : 10.25
+Average Response Time    : 5.25
+
+Bu değerler kullanıcı tarafından manuel hesaplanmayacak.
+
+4. 🔍 Karşılaştırmalı Analiz ve Raporlama
+
+Aynı process seti birden fazla algoritma ile çalıştırılabilecek.
+
+Örneğin:
+
+Algoritma	Avg. Waiting	Avg. Turnaround	Avg. Response
+FCFS	5.25	10.25	5.25
+SJF	3.50	8.50	3.50
+Priority	4.25	9.25	4.25
+RR	4.75	9.75	2.75
+
+Buradaki değerler sadece örnektir.
+
+Kullanıcı böylece algoritmaların aynı veri üzerindeki davranışlarını inceleyebilecek.
+
+5. 🧪 Parametrik Senaryo Laboratuvarı
+
+Kullanıcı parametreleri değiştirerek farklı senaryolar oluşturabilecek.
+
+Örneğin:
+
+Process Sayısı       → 10
+Time Quantum         → 3
+Priority              → Değişken
+Arrival Time          → Değişken
+Burst Time            → Değişken
+
+Aynı process seti farklı parametrelerle tekrar çalıştırılabilecek.
+
+Örnek senaryolar
+Senaryo 1
+5 Process
+Quantum = 2
+
+Senaryo 2
+5 Process
+Quantum = 5
+
+Senaryo 3
+10 Process
+Quantum = 2
+
+Sonuçlar karşılaştırılabilecek.
+
+🗓️ HAFTALIK PROJE PLANI
+🟦 HAFTA 1 — Gereksinim ve Teknoloji Belirleme
+🎯 Amaç
+
+Projenin ne yapacağını ve hangi teknolojilerle geliştirileceğini kesinleştirmek.
+
+Yapılacaklar
+ Proje kapsamını belirle
+ Kullanıcı ihtiyaçlarını belirle
+ Functional requirement'ları yaz
+ Non-functional requirement'ları yaz
+ Kullanılacak programlama dilini belirle
+ Frontend teknolojisini belirle
+ Backend gerekip gerekmediğine karar ver
+ Proje repository'sini oluştur
+ Git branching stratejisini belirle
+ İlk mimari taslağı oluştur
+Functional Requirements
+FR-01 → Kullanıcı process oluşturabilmeli.
+FR-02 → Arrival Time girilebilmeli.
+FR-03 → Burst Time girilebilmeli.
+FR-04 → Priority girilebilmeli.
+FR-05 → Scheduling algoritması seçilebilmeli.
+FR-06 → Simülasyon başlatılabilmeli.
+FR-07 → Gantt Chart oluşturulmalı.
+FR-08 → Performans metrikleri hesaplanmalı.
+FR-09 → Algoritmalar karşılaştırılabilmeli.
+FR-10 → Senaryo oluşturulabilmeli.
+Hafta çıktısı
+
+📌 Requirements Document + Technology Decision
+
+🟦 HAFTA 2 — Sistem Tasarımı ve Process Yapısı
+🎯 Amaç
+
+Kodlamaya başlamadan önce sistemin temel yapısını oluşturmak.
+
+Process modeli
+
+Örneğin:
+
+Process {
+    id
+    arrivalTime
+    burstTime
+    priority
+    remainingTime
+    startTime
+    completionTime
+    waitingTime
+    turnaroundTime
+    responseTime
+}
+Yapılacaklar
+ Process modeli
+ Scheduling modeli
+ Simulation modeli
+ Result modeli
+ Gantt Chart modeli
+ Class diagram
+ Component diagram
+ Veri akışının belirlenmesi
+Hafta çıktısı
+
+📌 UML + Class Structure + Architecture Diagram
+
+🟦 HAFTA 3 — Simülasyon Altyapısı + FCFS
+🎯 Amaç
+
+Temel scheduling engine'i oluşturmak.
+
+Yapılacaklar
+ Simulation Engine
+ Process Queue
+ CPU state
+ Time management
+ Process execution
+ FCFS algoritması
+ İlk Gantt Chart
+ Basit testler
+Örnek
+Input
+
+P1 → AT:0 BT:5
+P2 → AT:1 BT:3
+P3 → AT:2 BT:4
+
+↓
+
+FCFS
+
+P1 → P2 → P3
+
+↓
+
+Gantt Chart
+
+0    5    8    12
+| P1 | P2 | P3 |
+Hafta çıktısı
+
+📌 Çalışan FCFS simülasyonu
+
+🟦 HAFTA 4 — SJF
+🎯 Amaç
+
+SJF algoritmasını sisteme eklemek.
+
+Yapılacaklar
+ SJF algoritması
+ Ready Queue kontrolü
+ Burst Time karşılaştırması
+ Process sıralaması
+ Gantt Chart
+ Waiting Time
+ Turnaround Time
+ Test cases
+Önemli karar
+
+SJF'nin:
+
+Non-preemptive
+
+olarak mı yoksa
+
+Preemptive / SRTF
+
+olarak mı uygulanacağı proje kapsamında netleştirilecek.
+
+İlk versiyonda Non-preemptive SJF kullanmak daha sade bir başlangıç sağlar.
+
+Hafta çıktısı
+
+📌 FCFS + SJF
+
+🟦 HAFTA 5 — Priority Scheduling
+🎯 Amaç
+
+Priority Scheduling algoritmasını sisteme eklemek.
+
+Yapılacaklar
+ Priority alanı
+ Priority Queue
+ Priority karşılaştırması
+ Aynı priority durumunun belirlenmesi
+ Gantt Chart
+ Performans metrikleri
+ Test
+Karar verilmesi gereken konu
+1 = En yüksek öncelik
+
+mi?
+
+veya
+
+10 = En yüksek öncelik
+
+mi?
+
+Projenin başında kesin olarak tanımlanmalı.
+
+Hafta çıktısı
+
+📌 FCFS + SJF + Priority
+
+🟦 HAFTA 6 — Round Robin
+🎯 Amaç
+
+Preemptive bir algoritmayı sisteme dahil etmek.
+
+Kullanılacak parametre
+Time Quantum
+Örnek
+Quantum = 2
+
+P1 = 5
+P2 = 3
+P3 = 4
+
+Simülasyon:
+
+P1 → P2 → P3 → P1 → P2 → P3 → P1...
+Yapılacaklar
+ Ready Queue
+ Time Quantum
+ Remaining Time
+ Context switching mantığı
+ Process'in queue'ya geri alınması
+ Gantt Chart
+ Metrik hesaplama
+ Test
+Hafta çıktısı
+
+📌 4 Scheduling Algorithm tamamlanmış olacak.
+
+🟦 HAFTA 7 — Gantt Chart
+🎯 Amaç
+
+Simülasyon sonuçlarını görselleştirmek.
+
+Gösterilecek bilgiler
+Process
+Start Time
+End Time
+Duration
+Örnek
+0       5       8       12
+┌───────┬───────┬────────┐
+│  P1   │  P2   │   P3   │
+└───────┴───────┴────────┘
+Ek özellikler
+ Zoom
+ Tooltip
+ Process bilgisi
+ Timeline
+ CPU idle zamanı gösterimi
+Hafta çıktısı
+
+📌 Görsel Gantt Chart
+
+🟦 HAFTA 8 — Performans Metrikleri
+🎯 Amaç
+
+Simülasyon sonuçlarını sayısal olarak değerlendirmek.
+
+Hesaplanacaklar
+ Completion Time
+ Waiting Time
+ Turnaround Time
+ Response Time
+ Average Waiting Time
+ Average Turnaround Time
+ Average Response Time
+ CPU Utilization
+Dashboard örneği
+┌──────────────────────────────┐
+│       PERFORMANCE            │
+├──────────────────────────────┤
+│ Avg Waiting Time      4.25   │
+│ Avg Turnaround Time   9.50   │
+│ Avg Response Time     2.75   │
+│ CPU Utilization       92%    │
+└──────────────────────────────┘
+Hafta çıktısı
+
+📌 Automatic Metrics Engine
+
+🟦 HAFTA 9 — Karşılaştırma ve Analiz
+🎯 Amaç
+
+Algoritmaların sonuçlarını tek ekranda karşılaştırmak.
+
+Örnek
+                 FCFS    SJF    Priority    RR
+
+Waiting Time      5.2    3.4      4.1       4.7
+Turnaround        9.5    7.8      8.6       9.2
+Response          5.2    3.4      4.1       2.7
+Görselleştirme
+ Bar Chart
+ Comparison Table
+ Gantt Chart comparison
+ Scenario comparison
+ Export/report
+Önemli nokta
+
+Sistem kullanıcıya doğrudan tek bir algoritmayı “en iyi” olarak dayatmak yerine metrikleri göstermeli.
+
+Böylece kullanıcı:
+
+“Bu workload altında hangi algoritmanın hangi metriği nasıl etkilediğini”
+
+görebilir.
+
+Hafta çıktısı
+
+📌 Comparative Analysis Module
+
+🟦 HAFTA 10 — Test ve Hata Düzeltme
+🎯 Amaç
+
+Sistemin güvenilirliğini test etmek.
+
+Test senaryoları
+Test 1 — Tek Process
+P1
+AT = 0
+BT = 5
+
+Beklenen:
+
+Waiting = 0
+Turnaround = 5
+Test 2 — Aynı Arrival Time
+P1 → AT 0
+P2 → AT 0
+P3 → AT 0
+Test 3 — Farklı Arrival Time
+P1 → AT 0
+P2 → AT 5
+P3 → AT 10
+Test 4 — CPU Idle
+P1 → AT 0
+P2 → AT 10
+
+CPU:
+
+0────5       10────
+ P1    IDLE    P2
+Test 5 — Aynı Priority
+
+İki veya daha fazla process aynı priority değerine sahip olduğunda davranış test edilmeli.
+
+Test 6 — Round Robin
+
+Farklı quantum değerleri denenmeli:
+
+Quantum = 1
+Quantum = 2
+Quantum = 4
+Quantum = 8
+Test 7 — Büyük Process Sayısı
+50 Process
+100 Process
+1000 Process
+
+ile performans test edilmeli.
+
+Hafta çıktısı
+
+📌 Test Report + Bug List + Fixed Issues
+
+🟦 HAFTA 11 — Son Düzenlemeler ve Sunum
+🎯 Amaç
+
+Projeyi teslim edilebilir hale getirmek.
+
+Yapılacaklar
+ UI düzenlemesi
+ Kod refactoring
+ Gereksiz kodların temizlenmesi
+ README
+ Kullanım kılavuzu
+ Architecture diagram
+ UML diagram
+ Test raporu
+ Sonuçların hazırlanması
+ Sunum hazırlanması
+ Demo senaryosu hazırlanması
+ GitHub repository düzenlenmesi
+Son kontrol
+☐ FCFS çalışıyor
+☐ SJF çalışıyor
+☐ Priority çalışıyor
+☐ Round Robin çalışıyor
+☐ Gantt Chart çalışıyor
+☐ Metrikler doğru
+☐ Karşılaştırma çalışıyor
+☐ Parametre değiştirilebiliyor
+☐ Testler tamamlandı
+☐ Dokümantasyon hazır
+☐ Sunum hazır
+🧪 TEST VERİ SETLERİ
+
+Projede baştan itibaren ortak kullanılacak birkaç test datası oluşturmak çok faydalı olur.
+
+Dataset A — Basic
+Process	Arrival	Burst	Priority
+P1	0	5	2
+P2	1	3	1
+P3	2	8	3
+P4	3	4	2
+Dataset B — Same Arrival
+Process	Arrival	Burst	Priority
+P1	0	8	2
+P2	0	4	1
+P3	0	2	3
+P4	0	6	2
+Dataset C — CPU Idle
+Process	Arrival	Burst	Priority
+P1	0	3	1
+P2	8	4	2
+P3	15	2	3
+Dataset D — Round Robin
+Process	Arrival	Burst
+P1	0	8
+P2	1	5
+P3	2	3
+P4	3	6
+
+Quantum:
+
+Q = 2
+🧱 Önerilen Yazılım Yapısı
+CodeFlow
+│
+├── models
+│   ├── Process
+│   ├── SimulationResult
+│   ├── GanttEntry
+│   └── PerformanceMetrics
+│
+├── algorithms
+│   ├── SchedulingAlgorithm
+│   ├── FCFS
+│   ├── SJF
+│   ├── Priority
+│   └── RoundRobin
+│
+├── engine
+│   ├── SimulationEngine
+│   ├── ProcessManager
+│   └── MetricsCalculator
+│
+├── visualization
+│   ├── GanttChart
+│   └── PerformanceChart
+│
+├── comparison
+│   └── AlgorithmComparator
+│
+└── tests
+    ├── FCFSTest
+    ├── SJFTest
+    ├── PriorityTest
+    └── RoundRobinTest
+🔌 Algoritma Tasarımının Temeli
+
+Projede özellikle genişletilebilirlik isteniyor.
+
+Bu nedenle bütün algoritmaları tek bir if-else bloğuna koymak yerine ortak bir abstraction oluşturmak mantıklı.
+
+Örneğin:
+
+SchedulingAlgorithm
+        │
+        ├── FCFS
+        ├── SJF
+        ├── Priority
+        └── RoundRobin
+
+Her algoritmanın ortak olarak:
+
+simulate(processes)
+
+gibi bir davranışı olabilir.
+
+Böylece ileride:
+
+SRTF
+MLFQ
+HRRN
+
+eklemek daha kolay olur.
+
+🔄 Projenin Genel Veri Akışı
+Kullanıcı
+   │
+   ▼
+Process Girişi
+   │
+   ▼
+Parametre Kontrolü
+   │
+   ▼
+Scheduling Algorithm Seçimi
+   │
+   ▼
+Simulation Engine
+   │
+   ▼
+Process Scheduling
+   │
+   ▼
+Gantt Data
+   │
+   ├───────────────┐
+   ▼               ▼
+Metrics        Visualization
+   │               │
+   └───────┬───────┘
+           ▼
+       Results
+           │
+           ▼
+    Comparison / Report
+📋 Her Hafta İçin Standart Görev Şablonu
+
+Notion'da her haftanın altına bunu koyabilirsiniz:
+
+🎯 Bu haftanın amacı
+
+Bu hafta neyi tamamlamamız gerekiyor?
+
+📚 Araştırılacak konular
+[ ]
+[ ]
+[ ]
+💻 Kodlama
+[ ]
+[ ]
+[ ]
+🧪 Test
+[ ]
+[ ]
+📊 Çıktı
+
+Bu haftanın sonunda elimizde ne olmalı?
+
+📝 Dokümantasyon
+ Yapılan işlemler
+ Alınan kararlar
+ Karşılaşılan problemler
+ Çözümler
+🚧 Açık Problemler
+Problem	Öncelik	Sorumlu	Durum
+	🔴		
+	🟡		
+📊 Proje Durum Tablosu
+
+Bunu Notion'da Board Database olarak oluşturmanız çok kullanışlı olur.
+
+Görev	Hafta	Sorumlu	Durum	Öncelik
+Gereksinim analizi	1		🔲 To Do	🔴
+Teknoloji seçimi	1		🔲 To Do	🔴
+Process modeli	2		🔲 To Do	🔴
+Architecture	2		🔲 To Do	🔴
+FCFS	3		🔲 To Do	🔴
+SJF	4		🔲 To Do	🔴
+Priority	5		🔲 To Do	🔴
+Round Robin	6		🔲 To Do	🔴
+Gantt Chart	7		🔲 To Do	🟡
+Metrics Engine	8		🔲 To Do	🔴
+Comparison	9		🔲 To Do	🟡
+Testing	10		🔲 To Do	🔴
+Documentation	11		🔲 To Do	🟡
+Presentation	11		🔲 To Do	🔴
+📝 Karar Günlüğü
+
+Projede aldığınız önemli kararları burada tutun.
+
+Tarih	Karar	Neden?
+	SJF non-preemptive kullanılacak	İlk sürümü sade tutmak
+	Priority değeri küçük olan daha öncelikli	Net bir standart oluşturmak
+	Round Robin quantum kullanıcı tarafından değiştirilecek	Parametrik senaryo desteği
+	Algoritmalar ayrı modüller olacak	Genişletilebilirlik
+
+Bu bölüm özellikle Yazılım Tasarımı ve Mimarisi dersi açısından değerli. Çünkü sadece “kod yazdık” değil, neden bu tasarımı yaptığımızı gösterebilirsiniz.
+
+📚 Araştırma Konuları
+
+Proje boyunca şu konular öğrenilecek:
+
+Operating Systems
+CPU Scheduling
+Process
+Process State
+Ready Queue
+Context Switch
+Preemptive Scheduling
+Non-preemptive Scheduling
+Algorithms
+FCFS
+SJF
+Priority Scheduling
+Round Robin
+Software Architecture
+Modüler tasarım
+Interface / abstraction
+Separation of Concerns
+SOLID prensipleri
+Extensibility
+Design Patterns
+Visualization
+Gantt Chart
+Timeline
+Performance Charts
+Comparative Tables
+🎤 Final Sunum Akışı
+
+Sunumu da şimdiden şu yapıda planlayabilirsiniz:
+
+1. Problem
+
+CPU scheduling algoritmalarını anlamak ve performanslarını karşılaştırmak neden önemli?
+
+2. Çözüm
+
+CodeFlow nedir?
+
+3. Sistem Mimarisi
+
+Architecture diagram.
+
+4. Scheduling Algorithms
+FCFS
+SJF
+Priority
+Round Robin
+5. Canlı Demo
+
+Örneğin:
+
+4 Process
+Quantum = 2
+
+↓
+
+Run Simulation
+
+↓
+
+Gantt Chart
+
+↓
+
+Metrics
+
+↓
+
+Comparison
+6. Öne Çıkan Özellikler
+Modüler algoritma motoru
+Gantt Chart
+Otomatik metrik motoru
+Karşılaştırmalı analiz
+Parametrik senaryo laboratuvarı
+7. Sonuç
+
+Aynı process setinin farklı scheduling algoritmaları altında nasıl farklı sonuçlar ürettiği gösterilir.
+
+🏁 Final Definition of Done
+
+Proje tamamlandı sayılabilmesi için:
+
+                 CODEFLOW
+                    │
+       ┌────────────┼────────────┐
+       ▼            ▼            ▼
+   ALGORITHMS    SIMULATION    ANALYSIS
+       │            │            │
+   ┌───┴───┐        │       ┌────┴────┐
+   │ │ │ │  │        │       │         │
+  FCFS SJF P  RR     │    Metrics  Comparison
+                      │
+                      ▼
+                  Gantt Chart
+                      │
+                      ▼
+                   REPORT
+✅ Final Checklist
+ Gereksinim analizi tamamlandı
+ Teknoloji seçildi
+ Mimari tasarım tamamlandı
+ Process modeli oluşturuldu
+ FCFS tamamlandı
+ SJF tamamlandı
+ Priority tamamlandı
+ Round Robin tamamlandı
+ Gantt Chart tamamlandı
+ Metrik motoru tamamlandı
+ Karşılaştırma modülü tamamlandı
+ Parametrik senaryo sistemi tamamlandı
+ Unit testler yazıldı
+ Edge case'ler test edildi
+ Kod refactor edildi
+ README hazırlandı
+ UML/Architecture diagram hazırlandı
+ Sunum hazırlandı
+ Demo senaryosu hazırlandı
+ Final test yapıldı
+🚀 Projenin ana mantığı
+
+Bence bu projeyi sadece “4 tane scheduling algoritması kodlayalım” şeklinde düşünmeyin.
+
+Asıl proje şu:
+
+Kullanıcının process'lerini al → farklı scheduling stratejileriyle simüle et → simülasyonu görselleştir → performans metriklerini otomatik hesapla → senaryoları karşılaştır → sonuçları raporla.
+
+Ve hocanın özellikle belirttiği “modüler ve genişletilebilir algoritma motoru” nedeniyle mimari tarafı en az algoritmalar kadar önemli olacak. Bu yüzden daha ilk haftadan itibaren “yeni bir scheduling algoritması eklediğimizde mevcut kodu değiştirmek zorunda kalmayalım” prensibini tasarım kriteriniz yapmanızı öneririm.
